@@ -163,6 +163,11 @@ function renderDistribution(profile, key) {
   const chosen = state.section === 'ALL' ? sessionSections : sessionSections.filter(x => x.section === state.section);
   const aggregate = aggregateDistributions(chosen);
   if (!aggregate) return '<p class="notice-text">No grade data for this selection.</p>';
+  // These are view-specific values, not global state. Keeping them in this
+  // renderer prevents a ReferenceError after the course API request completes.
+  const options = sessionSections.map(row => `<option value="${escapeHTML(row.section)}" ${row.section === state.section ? 'selected' : ''}>Section ${escapeHTML(row.section)}</option>`).join('');
+  const sizeNote = aggregate.partialSize ? ' · some sizes unavailable' : '';
+  const missing = !aggregate.fullyPublished;
   const single = chosen.length === 1 ? chosen[0] : null;
   const bins = gradeDistributionSvg(aggregate.bins,
     `Published grade-range counts for ${state.session}${state.section==='ALL' ? ', all available sections' : `, section ${state.section}`}`);
@@ -386,7 +391,9 @@ $('courseCards').addEventListener('change', e => {
 $('resetCompare').addEventListener('click', () => { selected.clear(); $('comparePanel').hidden = true; render(); });
 $('showCompare').addEventListener('click', () => { $('comparePanel').hidden = false; renderComparison(); $('comparePanel').scrollIntoView({ behavior: 'smooth', block: 'center' }); });
 $('closeCompare').addEventListener('click', () => { $('comparePanel').hidden = true; });
-render(); if (page === 'classes') refreshAll();
+// The initial render is delayed until all helper functions and const bindings
+// have initialized. My Classes may already contain saved courses; rendering
+// the planner here previously threw a temporal-dead-zone ReferenceError.
 
 // Local dataset transparency: prefer the newest source per year-session. Never
 // treat a missing source year as proof a course did not run that year.
@@ -693,3 +700,8 @@ $('plannerReset').addEventListener('click', () => {
   }
   savePlanner();renderPlanner();
 });
+
+// Initialize after module setup is complete; especially important when a
+// student returns to a saved course lineup after viewing a full report.
+render();
+if (page === 'classes') refreshAll();
