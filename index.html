@@ -13,7 +13,7 @@
   <header class="site-header">
     <div class="shell header-inner">
       <a href="#home" class="brand" aria-label="Coursewise home"><span class="brand-icon"><svg viewBox="0 0 28 28" width="26" height="26" fill="none"><path d="M6 20V8h4.5v12M14 20V4h4.5v16M22 20v-9" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>coursewise<span class="brand-period">.</span></span></a>
-      <nav class="desktop-nav" aria-label="Main navigation"><a class="active" href="#workspace">My courses</a><a href="#discover">Explore</a><a href="#coverage">Data & sources</a></nav>
+      <nav class="desktop-nav" aria-label="Main navigation"><a class="active" href="#workspace">My courses</a><a href="#discover">Course catalog</a><a href="#gpa-guide">GPA guide</a><a href="#coverage">Data & sources</a></nav>
       <span class="header-tag"><span class="green-dot"></span> Independent UBC project</span>
     </div>
   </header>
@@ -21,8 +21,8 @@
     <section class="hero shell">
       <div class="eyebrow"><span class="eyebrow-icon">✦</span> THE SMARTER WAY TO PLAN YOUR SEMESTER</div>
       <h1>Know your courses.<br/><span>Before you take them.</span></h1>
-      <p>From one course to your entire schedule—explore historical grades, instructor history, and the context behind every class.</p>
-      <div class="hero-links"><a href="#workspace" class="link-primary">Analyze my schedule <span aria-hidden="true">↗</span></a><a href="#discover" class="link-secondary">Explore a course <span aria-hidden="true">→</span></a></div>
+      <p>From one course to your entire schedule—explore historical grade distributions, class sizes, instructor history, and the context behind every class.</p>
+      <div class="hero-links"><a href="#workspace" class="link-primary">Analyze my schedule <span aria-hidden="true">↗</span></a><a href="#discover" class="link-secondary">Browse all courses <span aria-hidden="true">→</span></a></div>
       <div class="trust-line"><span>◈ Historical grade data</span><span>◈ UBC Vancouver + Okanagan</span><span>◈ No Workday login needed</span></div>
     </section>
 
@@ -51,9 +51,32 @@
       <div id="comparePanel" class="compare-panel" hidden><div class="flex-between"><h3>Side-by-side comparison</h3><button id="closeCompare" class="icon-btn" aria-label="Close comparison">✕</button></div><div id="comparisonTable" class="table-scroller"></div><p class="table-footnote">These are historical course averages, not predicted personal grades. Instructor and section differences can be substantial.</p></div>
     </section>
 
-    <section class="shell discover-section" id="discover"><div class="section-header"><div><span class="section-index">02 / EXPLORE</span><h2>Start with a course.</h2><p>Popular starting points—select one to fetch its historical data.</p></div></div><div class="explore-grid"><button class="explore-tile" data-course="CPSC 110"><span class="explore-symbol">{ }</span><span class="explore-body"><strong>CPSC 110</strong><small>Computation, programs & programming</small></span><span class="tile-arrow">↗</span></button><button class="explore-tile" data-course="MATH 100"><span class="explore-symbol">∑</span><span class="explore-body"><strong>MATH 100</strong><small>Differential calculus</small></span><span class="tile-arrow">↗</span></button><button class="explore-tile" data-course="CPEN 221"><span class="explore-symbol">⌘</span><span class="explore-body"><strong>CPEN 221</strong><small>Software construction</small></span><span class="tile-arrow">↗</span></button><button class="explore-tile" data-course="CHEM 121"><span class="explore-symbol">⌬</span><span class="explore-body"><strong>CHEM 121</strong><small>General chemistry</small></span><span class="tile-arrow">↗</span></button></div></section>
+    <section class="shell discover-section" id="discover">
+      <div class="section-header"><div><span class="section-index">02 / COURSE CATALOG</span><h2>Explore every course.</h2><p>Search the actual indexed UBC grade archive—not a short list of featured courses.</p></div></div>
+      <div class="catalog-shell">
+        <div class="catalog-controls">
+          <label class="catalog-query">Search course or title<input id="browseSearch" type="search" placeholder="CPSC 110, CPEN 221, Calculus…" autocomplete="off" /></label>
+          <label>Campus<select id="browseCampus"><option value="UBCV">UBC Vancouver</option><option value="UBCO">UBC Okanagan</option></select></label>
+          <label>Subject<select id="browseSubject"><option value="">All subjects</option></select></label>
+          <label>Sort by<select id="browseSort"><option value="recent">Most recently recorded</option><option value="name">Course code</option><option value="average">Highest published course mean</option></select></label>
+        </div>
+        <p id="catalogStatus" class="catalog-status" role="status">Loading course catalog…</p>
+        <div id="catalogResults" class="catalog-results" aria-live="polite"></div>
+        <div class="catalog-pages"><button id="catalogPrev" type="button" class="outline-btn" disabled>← Previous</button><button id="catalogNext" type="button" class="outline-btn" disabled>Next →</button></div>
+        <div id="exploreDetail" class="catalog-detail" aria-live="polite"></div>
+      </div>
+    </section>
 
-    <section class="shell source-section" id="coverage"><div class="section-header"><div><span class="section-index">03 / TRANSPARENCY</span><h2>Better insights. Clearer sources.</h2><p>Knowing what the data can't tell you is part of making a good decision.</p></div></div><div class="source-grid"><article><div class="source-number">01</div><h3>Real grade data, not guesses.</h3><p>Course averages are indexed directly from the provided UBC PAIR grade CSV archive, with a public API fallback for unindexed codes. We never invent unavailable values.</p></article><article><div class="source-number">02</div><h3>Mind the missing grades.</h3><p>UBC's reports suppress some small grade categories for privacy. We leave those blank rather than reverse-engineering suppressed student counts.</p></article><article><div class="source-number">03</div><h3>Historical ≠ predictive.</h3><p>Past grades vary by instructor, section and year. Use the results as context—not as a guaranteed grade or a complete difficulty score.</p></article></div>
+    <section class="shell gpa-guide-section" id="gpa-guide">
+      <div class="section-header"><div><span class="section-index">03 / GRADING GUIDE</span><h2>Understand your grades.</h2><p>UBC percentage letter ranges and its published example equivalencies on a 4.33 scale.</p></div></div>
+      <div class="gpa-guide-grid">
+        <article class="gpa-guide-card"><h3>Letter grade ranges</h3><p>UBC's grading practice in most faculties.</p><table class="gpa-table"><thead><tr><th>Letter grade</th><th>Percentage</th></tr></thead><tbody id="letterGradeTable"></tbody></table></article>
+        <article class="gpa-guide-card"><h3>4.33 equivalency lookup</h3><p>The published conversion is <strong>percentage-specific</strong>, not simply the letter-grade cutoffs. 85% = 3.95; 86% = 4.00.</p><div class="gpa-table-scroller"><table class="gpa-table"><thead><tr><th>UBC percentage</th><th>4.33 equivalent</th><th>Letter</th></tr></thead><tbody id="gpaLookup"></tbody></table></div></article>
+      </div>
+      <p class="gpa-disclaimer">UBC records percentage and letter grades; the 4.33 table is an illustrative equivalency. Different institutions may convert grades differently. Fractional historical averages are rounded to the nearest whole percentage point for the lookup and marked ≈; converting a course's average is <strong>not</strong> the same as averaging every student's GPA. The published UBC equivalency table doesn't list grades below 50%, so those are shown as F without an invented numeric equivalency. Sources: <a href="https://www.arts.ubc.ca/degree-planning/academic-performance/promotion-continuation-grading/" target="_blank" rel="noopener noreferrer">UBC Faculty of Arts ↗</a> and <a href="https://students.ubc.ca/enrolment/courses/grades/" target="_blank" rel="noopener noreferrer">UBC Student Services ↗</a>.</p>
+    </section>
+
+    <section class="shell source-section" id="coverage"><div class="section-header"><div><span class="section-index">04 / TRANSPARENCY</span><h2>Better insights. Clearer sources.</h2><p>Knowing what the data can't tell you is part of making a good decision.</p></div></div><div class="source-grid"><article><div class="source-number">01</div><h3>Real grade data, not guesses.</h3><p>Course averages are indexed directly from the provided UBC PAIR grade CSV archive, with a public API fallback for unindexed codes. We never invent unavailable values.</p></article><article><div class="source-number">02</div><h3>Mind the missing grades.</h3><p>UBC's reports suppress some small grade categories for privacy. We leave those blank rather than reverse-engineering suppressed student counts.</p></article><article><div class="source-number">03</div><h3>Historical ≠ predictive.</h3><p>Past grades vary by instructor, section and year. Use the results as context—not as a guaranteed grade or a complete difficulty score.</p></article></div>
       <div class="coverage-explorer" aria-labelledby="coverage-heading">
         <div class="coverage-toolbar"><div><h3 id="coverage-heading">Raw data coverage</h3><p>See which academic sessions have published grade averages. Empty averages remain unavailable.</p></div><label>Campus <select id="coverageCampus"><option value="UBCV">UBC Vancouver</option><option value="UBCO">UBC Okanagan</option></select></label></div>
         <p id="coverageSummary" class="coverage-kpi" role="status">Checking local dataset…</p>

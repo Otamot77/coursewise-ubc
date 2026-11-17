@@ -58,6 +58,29 @@ class ImportTests(unittest.TestCase):
         self.assertEqual(result['UBCV:CPEN:221A']['stats']['average'], 78)
         self.assertEqual(result['UBCV:CPEN:221B']['stats']['average'], 70)
 
+    def test_raw_bins_and_class_size_are_kept_without_reconstructing_missing_counts(self):
+        row = normalize_row({
+            'Campus':'UBCV','Year':'2025','Session':'W','Subject':'CPSC','Course':'110',
+            'Section':'101','Reported':'83','Avg':'79.75','Median':'80',
+            'Percentile (25)':'73','Percentile (75)':'86',
+            'High':'99','Low':'18','<50':'', '50-54':'0', '90-100':'9',
+        }, 'tableau-dashboard-v2')
+        self.assertEqual(row['reported'], 83)
+        self.assertEqual(row['reportedKind'], 'Reported')
+        self.assertIsNone(row['distribution']['<50'])
+        self.assertEqual(row['distribution']['50-54'], 0)
+        self.assertEqual(row['distribution']['90-100'], 9)
+        result, _ = build_profiles([row])
+        prof = result['UBCV:CPSC:110']
+        section = prof['recentSections'][0]
+        self.assertEqual(section['median'], 80)
+        self.assertEqual(section['p25'], 73)
+        self.assertEqual(section['p75'], 86)
+        self.assertEqual(prof['stats']['max_grade'], 99)
+        self.assertEqual(prof['stats']['min_grade'], 18)
+        self.assertIsNone(section['distribution']['<50'])
+        self.assertEqual(section['distribution']['90-100'],9)
+
     def test_reject_invalid_codes_and_campus_normalization(self):
         base = {'Campus': 'UBC', 'Year': '2024', 'Session': 'W', 'Subject': 'MATH',
                 'Course': '100', 'Section': '001', 'Avg': '75'}

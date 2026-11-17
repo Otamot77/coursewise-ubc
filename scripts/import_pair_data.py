@@ -24,7 +24,9 @@ SOURCE_RANK = {'pair-reports': 1, 'tableau-dashboard': 2, 'tableau-dashboard-v2'
 YEAR = re.compile(r'^(?:19|20)\d{2}$')
 CODE = re.compile(r'^\d{3}[A-Z]?$')
 SUBJECT = re.compile(r'^[A-Z]{2,6}$')
-SECTION_LIMIT = 80
+SECTION_LIMIT = 120
+GRADE_BANDS = ('<50', '50-54', '55-59', '60-63', '64-67', '68-71',
+               '72-75', '76-79', '80-84', '85-89', '90-100')
 
 
 def data_source(filename):
@@ -65,6 +67,16 @@ def valid_number(value):
     return number if math.isfinite(number) else None
 
 
+def valid_count(value):
+    number = valid_number(value)
+    return int(number) if number is not None and number >= 0 and number.is_integer() else None
+
+
+def grade_mark(value):
+    mark = valid_number(value)
+    return mark if mark is not None and 0 <= mark <= 100 else None
+
+
 def normalize_row(row, source):
     campus = cleaned(row.get('Campus')).upper().replace('UBC', 'UBCV', 1) if cleaned(row.get('Campus')).upper() == 'UBC' else cleaned(row.get('Campus')).upper()
     year = cleaned(row.get('Year'))
@@ -83,14 +95,22 @@ def normalize_row(row, source):
     average = valid_number(row.get('Avg', row.get('Average')))
     if average is not None and not 0 <= average <= 100:
         average = None
-    reported = valid_number(row.get('Reported', row.get('Enrolled')))
-    if reported is not None and (reported <= 0 or not reported.is_integer()):
+    reported = valid_count(row.get('Reported', row.get('Enrolled')))
+    if reported is not None and reported <= 0:
         reported = None
     return {
         'campus': campus, 'yearsession': f'{year}{session}', 'subject': subject,
         'course': course, 'section': section, 'title': cleaned(row.get('Title')),
         'educators': cleaned(row.get('Professor')), 'reported': int(reported) if reported else None,
         'average': average, 'source': source,
+        'reportedKind': 'Reported' if source == 'tableau-dashboard-v2' else 'Enrolled',
+        'high': grade_mark(row.get('High')), 'low': grade_mark(row.get('Low')),
+        'median': grade_mark(row.get('Median')),
+        'p25': grade_mark(row.get('Percentile (25)')),
+        'p75': grade_mark(row.get('Percentile (75)')),
+        'stdDev': valid_number(row.get('Std dev')),
+        'statusCounts': {name: valid_count(row.get(name)) for name in ('Pass', 'Fail', 'Withdrew', 'Audit', 'Other')},
+        'distribution': {band: valid_count(row.get(band)) for band in GRADE_BANDS},
     }
 
 
@@ -123,7 +143,7 @@ def build_profiles(rows, correction_map=None):
     by_year = defaultdict(list)
     for row in rows:
         by_year[(row['campus'], row['subject'], row['course'], row['yearsession'])].append(row)
-    grouped = defaultdict(lambda: {'years': [], 'educators': defaultdict(dict), 'titles': [], 'sources': set(), 'sections': []})
+    grouped = defaultdict(lambda: {'years': [], 'educators': defaultdict(dict), 'titles': [], 'sources': set(), 'sections': [], 'highs': [], 'lows': []})
     duplicate_sections = 0
     source_overlap_groups = 0
     partial_yearsessions = 0
@@ -159,11 +179,21 @@ def build_profiles(rows, correction_map=None):
                 profile['titles'].append((yearsession, r['title']))
             correction_key = f"UBC-{yearsession}-{subject}-{course}-{r['section']}"
             people = educator_names(correction_map.get(correction_key, r['educators']))
-            if r['average'] is not None:
-                profile['sections'].append({
-                    'yearsession': yearsession, 'section': r['section'], 'average': round(r['average'], 2),
-                    'reported': r['reported'], 'educators': people[:8], 'source': source,
-                })
+            if r.get('high') is not None:
+                profile['highs'].append(r['high'])
+            if r.get('low') is not None:
+                profile['lows'].append(r['low'])
+            # Keep published section records even when the average or an individual bin
+            # is missing. Never fill a suppressed count using enrollment totals.
+            profile['sections'].append({
+                'yearsession': yearsession, 'section': r['section'],
+                'average': round(r['average'], 2) if r['average'] is not None else None,
+                'reported': r['reported'], 'reportedKind': r.get('reportedKind', 'Enrolled'),
+                'high': r.get('high'), 'low': r.get('low'), 'median': r.get('median'),
+                'p25': r.get('p25'), 'p75': r.get('p75'), 'stdDev': r.get('stdDev'),
+                'distribution': r.get('distribution', {}), 'statusCounts': r.get('statusCounts', {}),
+                'educators': people[:8], 'source': source,
+            })
             for person in people:
                 profile['educators'][person][yearsession] = profile['educators'][person].get(yearsession, 0) + 1
 
@@ -186,6 +216,8 @@ def build_profiles(rows, correction_map=None):
                 'average': mean(published), 'average_past_5_yrs': mean(recent),
                 'max_course_avg': round(max(y['average'] for y in published), 2) if published else None,
                 'min_course_avg': round(min(y['average'] for y in published), 2) if published else None,
+                'max_grade': max(profile['highs']) if profile['highs'] else None,
+                'min_grade': min(profile['lows']) if profile['lows'] else None,
             },
             'history': {'yearsessions': {y['yearsession']: y['average'] for y in published}},
             'teachingTeam': [{'name': name, 'yearsessions': ys} for name, ys in teachers],
@@ -195,6 +227,7 @@ def build_profiles(rows, correction_map=None):
                 'latest': years[-1]['yearsession'], 'latestPublished': published[-1]['yearsession'] if published else None,
                 'sources': sorted(profile['sources']), 'sessionDetails': years,
                 'limitedSectionHistory': len(recent_sections) > SECTION_LIMIT,
+                'retainedSections': min(len(recent_sections), SECTION_LIMIT),
                 'partialYearsessions': sum(1 for y in years if y['missingSectionAverages']),
                 'note': 'Means derived only from published averages. Section means weighted by reported count where available; missing grade data never reconstructed.'
             }

@@ -15,6 +15,8 @@ const cache = new Map();
 let localIndex = null;
 let localMetadata = null;
 let localCoverage = null;
+let catalog = [];
+let catalogSubjects = { UBCV: [], UBCO: [] };
 try {
   const indexFile = path.join(root, 'data', 'course-index.json.gz');
   if (existsSync(indexFile)) {
@@ -23,6 +25,18 @@ try {
     if (existsSync(metaFile)) localMetadata = JSON.parse(readFileSync(metaFile, 'utf8'));
     const coverageFile = path.join(root, 'data', 'coverage.json');
     if (existsSync(coverageFile)) localCoverage = JSON.parse(readFileSync(coverageFile, 'utf8'));
+    catalog = Object.entries(localIndex).map(([key, profile]) => {
+      const [campus, subject, course] = key.split(':');
+      const title = profile.stats?.course_title || '';
+      const average = profile.stats?.average ?? null;
+      const latest = profile.coverage?.latestPublished || profile.coverage?.latest || '';
+      return { campus, subject, course, title, average, latest,
+        sessions: profile.coverage?.yearsessions ?? 0 };
+    });
+    catalogSubjects = {
+      UBCV: [...new Set(catalog.filter(c => c.campus === 'UBCV').map(c => c.subject))].sort(),
+      UBCO: [...new Set(catalog.filter(c => c.campus === 'UBCO').map(c => c.subject))].sort()
+    };
     console.log(`Loaded ${Object.keys(localIndex).length} local PAIR course profiles.`);
   }
 } catch (error) {
@@ -99,6 +113,31 @@ const server = http.createServer(async (req, res) => {
       if (data.sources.stats !== 'error') cache.set(key, { time: Date.now(), data });
       return sendJSON(res, 200, data);
     } catch (err) { return sendJSON(res, 503, { error: err.message }); }
+  }
+  if (url.pathname === '/api/catalog') {
+    if (!localIndex) return sendJSON(res, 404, { error: 'Course catalog needs the locally imported PAIR dataset. See README for import instructions.' });
+    const campus = url.searchParams.get('campus') || 'UBCV';
+    const subject = (url.searchParams.get('subject') || '').trim().toUpperCase();
+    const q = (url.searchParams.get('q') || '').trim().toUpperCase().replace(/\s+/g, ' ');
+    const sort = url.searchParams.get('sort') || 'recent';
+    const pageValue = Number(url.searchParams.get('page') || 1);
+    if (!/^(UBCV|UBCO)$/.test(campus) || (subject && !/^[A-Z]{2,6}$/.test(subject)) || q.length > 80 ||
+        !['recent', 'name', 'average'].includes(sort) || !Number.isInteger(pageValue) || pageValue < 1 || pageValue > 10000) {
+      return sendJSON(res, 400, { error: 'Invalid catalog filters.' });
+    }
+    const filtered = catalog.filter(x => x.campus === campus && (!subject || x.subject === subject) &&
+      (!q || `${x.subject} ${x.course} ${x.subject}${x.course} ${x.title}`.toUpperCase().includes(q) ||
+        `${x.subject} ${x.course}`.includes(q.replace(/_/g, ' '))));
+    filtered.sort((a, b) => {
+      if (sort === 'name') return `${a.subject} ${a.course}`.localeCompare(`${b.subject} ${b.course}`);
+      if (sort === 'average') return (b.average ?? -1) - (a.average ?? -1) || `${a.subject} ${a.course}`.localeCompare(`${b.subject} ${b.course}`);
+      return b.latest.localeCompare(a.latest) || `${a.subject} ${a.course}`.localeCompare(`${b.subject} ${b.course}`);
+    });
+    const perPage = 24;
+    return sendJSON(res, 200, {
+      page: pageValue, perPage, total: filtered.length, subjects: catalogSubjects[campus],
+      results: filtered.slice((pageValue - 1) * perPage, pageValue * perPage)
+    });
   }
   if (url.pathname === '/api/coverage') {
     if (!localIndex || !localCoverage) return sendJSON(res, 404, { error: 'Local coverage dataset has not been imported.' });

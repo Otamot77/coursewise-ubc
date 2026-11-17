@@ -41,3 +41,25 @@ test('frontend is served without exposing compressed indexes as static files', a
   const forbidden = await fetch(`${root}/data/course-index.json.gz`);
   assert.equal(forbidden.status, 404);
 });
+
+
+test('full searchable catalog supports course and title filters without exposing raw records', async () => {
+  const response=await fetch(`${root}/api/catalog?campus=UBCV&q=CPEN%20221&page=1`);
+  if (response.status===404) {
+    assert.match((await response.json()).error, /imported PAIR dataset/);
+    return;
+  }
+  assert.equal(response.status,200);
+  const data=await response.json();
+  assert.ok(data.total>=1);
+  assert.ok(data.results.some(x=>x.subject==='CPEN' && x.course.startsWith('221')));
+  assert.ok(data.results.every(x=>x.campus==='UBCV'));
+  assert.ok(data.results.every(x=>!('recentSections' in x)));
+  assert.ok(data.subjects.includes('CPEN'));
+});
+
+test('catalog rejects invalid filters and oversized queries', async () => {
+  const r=await fetch(`${root}/api/catalog?campus=BAD`);
+  assert.ok([400,404].includes(r.status));
+  if(r.status===400) assert.match((await r.json()).error,/Invalid catalog/);
+});
