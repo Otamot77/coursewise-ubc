@@ -26,8 +26,9 @@ class MockElement {
     this.hidden=false;this.textContent='';this.innerHTML='';this.dataset={};
     this.listeners=new Map();this.classList={toggle(){},add(){},remove(){}};
   }
-  addEventListener(type, handler){this.listeners.set(type,handler);}
+  addEventListener(type, handler){const previous=this.listeners.get(type);this.listeners.set(type, previous ? (...args)=>{previous(...args);handler(...args);} : handler);}
   setAttribute(){}
+  scrollIntoView(){}
   querySelectorAll(){return [];}
   querySelector(){return null;}
 }
@@ -110,4 +111,25 @@ test('sticky navigation, Grade Goals shortcut and credit explanation are present
   assert.match(css,/\.site-header\{position:sticky;top:0;z-index:90/);
   assert.match(css,/\.desktop-nav a\{height:44px;flex:0 0 auto!important;display:flex!important/);
   assert.match(css,/\.history-point:hover \.history-hover-tooltip/);
+});
+
+test('comparison table shows median/quartiles/high-low and recalculates the percentile threshold',async()=>{
+  storage.set('coursewise:schedule:v1',JSON.stringify([{campus:'UBCV',subject:'ACAM',course:'300',sections:['101']}]));
+  const state=await mount('/my-classes');
+  const pick=state.get('courseCards').listeners.get('change');
+  pick({target:{dataset:{select:'UBCV:ACAM:300'},checked:true}});
+  state.get('showCompare').listeners.get('click')();
+  const html=state.get('comparisonTable').innerHTML;
+  assert.match(html,/Median grade/);
+  assert.match(html,/25th-percentile grade/);
+  assert.match(html,/75th-percentile grade/);
+  assert.match(html,/Highest \/ lowest individual mark/);
+  assert.match(html,/Students in most recent term/);
+  assert.match(html,/80\.3%/);
+  assert.match(html,/81\.0%/);
+  assert.match(html,/Standing at 80%/);
+  assert.doesNotMatch(html,/Teaching team entries|History range|Source unavailable/);
+  state.get('compareTargetGrade').value='82';
+  state.get('compareTargetGrade').listeners.get('input')();
+  assert.match(state.get('comparisonTable').innerHTML,/Standing at 82%/);
 });

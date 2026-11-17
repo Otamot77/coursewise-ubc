@@ -2,7 +2,7 @@
 
 An independent, unofficial UBC course explorer. Search **all 21,280 normalized campus/course-code entries in the supplied PAIR archive**, inspect published grade distributions and section statistics, and paste a saved/registered Workday schedule or upload its `.xlsx` export to see your courses together. Inspired by the MIT-licensed [UBCGrades](https://ubcgrades.com); source data originally compiled in [ubc-pair-grade-data](https://github.com/DonneyF/ubc-pair-grade-data). **The MIT license here covers only Coursewise code, not the upstream archive.**
 
-## Interface (v0.9.0)
+## Interface (v0.10.0)
 
 Coursewise now has **separate, directly navigable pages** (one view at a time):
 
@@ -16,6 +16,12 @@ Coursewise now has **separate, directly navigable pages** (one view at a time):
 | `/data` | Source provenance, incomplete-data notes and archive coverage |
 
 Course pages link every 4.33 equivalency label to the [official UBC Arts table](https://www.arts.ubc.ca/degree-planning/academic-performance/promotion-continuation-grading/). Different evaluating institutions may use different mappings; no personal GPA is calculated from historical course means.
+
+## More useful course comparison (v0.10.0)
+
+From **My Classes**, select up to four course checkboxes and choose **Compare courses**. The side-by-side table now prioritizes **five-year, latest-term and historical averages**, the **median grade**, **25th/75th-percentile grades**, **most recent term student counts**, and **historical highs/lows** rather than teaching-team-entry counts or generic coverage flags. When a latest term has one section and UBC published quartiles, it shows those quartiles directly. For multiple sections, it estimates quartiles from a complete term-wide histogram, visibly marked `≈` and labeled with the academic term. Older complete terms may be used when the latest grade bins are suppressed.
+
+The **Compare percentile at a grade of** field defaults to 80%, and updates the displayed historical standing when edited. At an official grade-band boundary (50, 55, 60, 64, 68, 72, 76, 80, 85, 90), the share scoring **strictly below** that mark is exact for the fully published grade-count sample. Within a band, exact ranks are impossible because the archive has **counts per range, not each student's mark**; Coursewise uses a labeled uniform interpolation and provides a possible lower/upper percentile bound for the band. Missing or privacy-suppressed bins produce `—` instead of a fabricated rank. Counts may be drawn from the most recent *fully published* retained term; the term and sample size appear in each comparison cell. Percentile here is within a course's historical grade outcomes, not a prediction about current enrollees or a joint percentile across students' whole schedules.
 
 ## Improvements in v0.8.0
 
@@ -50,7 +56,7 @@ The updated SVG geometry, chart tooltips, view markup, and sticky navigation hav
 - **Availability:** the newest Tableau v2 rows publish median and quartiles but no standard deviation. Earlier Tableau/PAIR rows publish standard deviation; legacy PAIR rows contain pass/fail status counts. Some selected terms and multi-section views have no comparable statistics.
 - **Provenance:** original grade information was published by UBC; the downloaded local index derives from the [community-maintained UBC PAIR archive](https://github.com/DonneyF/ubc-pair-grade-data), rather than directly querying UBC systems. The [official UBC Grade Distribution Report](https://cio.ubc.ca/grade-distribution-report) may require UBC-specific access. If no matching local record exists, an [UBCGrades API](https://ubcgrades.com/api-reference) fallback is attempted. Source and licensing limits still apply.
 
-## Features (v0.9.0)
+## Features (v0.10.0)
 
 - **Single-course search first** and a compact course catalog. Filter by campus, course-level (100 through 500; 600+), and subject code by typing its initial letters; search by course code/title and sort by historical mean or recent record. Browse nine courses per page. Select one for a standalone report.
 - **Course high/low statistics:** highest/lowest *historical course session mean*, alongside highest/lowest recorded individual marks when provided. These are different metrics and clearly labeled.
@@ -83,14 +89,14 @@ The repo **intentionally does not include any raw/derived grade dataset** pendin
 
 ### Running the complete data-included ZIP on Windows
 
-If you downloaded **`coursewise-ubc-v0.9-with-data.zip`**, extract it. In PowerShell, **change into the inner `coursewise-ubc` folder** containing `package.json`:
+If you downloaded **`coursewise-ubc-v0.10.0-with-data.zip`**, extract it. In PowerShell, **change into the inner `coursewise-ubc` folder** containing `package.json`:
 
 ```powershell
-cd "$HOME\Downloads\coursewise-ubc-v0.9-with-data\coursewise-ubc"
+cd "$HOME\Downloads\coursewise-ubc-v0.10.0-with-data\coursewise-ubc"
 npm start
 ```
 
-The ZIP already contains `data/course-index.json.gz`, `data/coverage.json` and `data/metadata.json`; **do not rerun the importer** for this download. If you have an older ZIP, stop its server with Ctrl+C first and start the v0.9 build. GitHub's source-only version still requires an import.
+The ZIP already contains `data/course-index.json.gz`, `data/coverage.json` and `data/metadata.json`; **do not rerun the importer** for this download. If you have an older ZIP, stop its server with Ctrl+C first and start the v0.10.0 build. GitHub's source-only version still requires an import.
 
 ## Tests
 

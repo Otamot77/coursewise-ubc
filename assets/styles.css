@@ -370,3 +370,21 @@
 .section-stats-visible .secondary-stat-grid span,.historical-stat-summary .secondary-stat-grid span{font-size:11px}
 @media(max-width:950px){.instructor-compare-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr))}.section-stats-visible .secondary-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:520px){.instructor-compare-grid{grid-template-columns:minmax(0,1fr)}.instructor-dist-svg{min-width:0}.secondary-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Grade-first course comparison; stable spacing and readable provenance */
+.comparison-controls{display:flex;align-items:center;flex-wrap:wrap;gap:11px;margin-top:20px;padding:13px 15px;border:1px solid #dcebe5;background:#f6faf8;border-radius:10px;color:#365e50;font-size:13px;font-weight:650}
+.comparison-controls>span{font-size:11px;color:#728881;font-weight:400}
+.comparison-threshold{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border:1px solid #c5dbd1;border-radius:8px;background:white}
+.comparison-threshold input{width:52px;border:0;background:transparent;text-align:right;font-size:17px;font-weight:750;color:#22684f;outline-offset:2px}
+.comparison-threshold span{color:#287a5a;font-size:13px}
+.comparison-table-rich{min-width:640px;border-collapse:separate;border-spacing:0}
+.comparison-table-rich th:first-child,.comparison-table-rich td:first-child{width:220px}
+.comparison-table-rich th,.comparison-table-rich td{padding:12px 15px;border-bottom:1px solid #e9efed;vertical-align:top}
+.comparison-table-rich tbody th{text-align:left;color:#55706d;font-weight:650}
+.comparison-table-rich tbody td{color:#184339}
+.comparison-table-rich td small,.comparison-table-rich th small{display:block;color:#7b928b;font-size:10px;font-weight:450;line-height:1.4;margin-top:4px}
+.comparison-table-rich .compare-group th{color:#238a6c;background:#f4faf7;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;padding:11px 15px}
+.compare-number{font-size:15px;font-weight:750;white-space:nowrap}
+.compare-percentile{font-size:18px;color:#208b69;white-space:nowrap}
+.compare-unavailable{color:#849c95}
+@media(max-width:650px){.comparison-table-rich{min-width:760px}.comparison-table-rich th:first-child,.comparison-table-rich td:first-child{width:185px}.compare-panel{padding:16px}}

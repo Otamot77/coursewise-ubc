@@ -3,6 +3,7 @@ import { parseWorkdayXlsx } from '../lib/workday-xlsx.mjs';
 import { normalizeProfile, fmtPercent, historyRange, recentChange, GRADE_BANDS, GPA_EQUIVALENCIES, gpaEquivalency, aggregateDistributions, validApiPath } from '../lib/grades.mjs';
 import { calculateGradePlan, chooseDistribution, DEFAULT_CREDITS, validCredits, validGrade } from '../lib/planner.mjs';
 import { compareInstructors, availableInstructorTerms } from '../lib/instructors.mjs';
+import { courseComparison } from '../lib/comparison.mjs';
 import { gradeDistributionSvg, historyTrendSvg, compactTrendSvg, instructorDistributionSvg } from '../lib/charts.mjs';
 
 const $ = id => document.getElementById(id);
@@ -313,16 +314,45 @@ function renderCourse(c, standalone = false) {
 function renderComparison() {
   const subset = courses.filter(c => selected.has(courseKey(c)));
   if (!subset.length) { $('comparePanel').hidden = true; return; }
-  const label = (value, prop) => prop ? fmtPercent(value?.[prop]) : value;
-  const rows = [
-    ['5-year average', c => fmtPercent(profiles.get(courseKey(c))?.average5)],
-    ['All-time average', c => fmtPercent(profiles.get(courseKey(c))?.average)],
-    ['History range', c => historyRange(profiles.get(courseKey(c))?.history ?? [])],
-    ['Teaching team entries', c => profiles.get(courseKey(c))?.teachingTeam?.length ?? '—'],
-    ['Coverage', c => errors.has(courseKey(c)) ? 'Source unavailable' : profiles.get(courseKey(c)) ? 'Found' : 'No statistics']
-  ];
-  $('comparisonTable').innerHTML = `<table class="comparison-table"><thead><tr><th>Metric</th>${subset.map(c => `<th>${escapeHTML(courseLabel(c))}</th>`).join('')}</tr></thead><tbody>${rows.map(([title, get]) => `<tr><td>${title}</td>${subset.map(c => `<td>${escapeHTML(get(c))}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+  const targetField = $('compareTargetGrade');
+  const rawTarget = Number(targetField?.value);
+  const targetGrade = targetField?.value.trim() && Number.isFinite(rawTarget) && rawTarget >= 0 && rawTarget <= 100 ? rawTarget : 80;
+  const stats = subset.map(c => courseComparison(profiles.get(courseKey(c)), targetGrade));
+  const cell = (item, html) => item ? html(item) : '<span class="compare-unavailable">—</span>';
+  const datum = (value, detail = '') => `<span class="compare-number">${fmtPercent(value)}</span>${detail ? `<small>${escapeHTML(detail)}</small>` : ''}`;
+  const quartile = (item, field) => cell(item, x => datum(x.quartiles[field],
+    x.quartiles[field] == null ? 'Unavailable' : `${x.quartiles.method === 'published section' ? 'Published section' : '≈ Grade bands'} · ${x.quartiles.term || 'unknown term'}`));
+  const row = (title, render, hint = '') => `<tr><th scope="row">${title}${hint ? `<small>${escapeHTML(hint)}</small>` : ''}</th>${stats.map(x => `<td>${cell(x, render)}</td>`).join('')}</tr>`;
+  const group = label => `<tr class="compare-group"><th scope="rowgroup" colspan="${stats.length + 1}">${label}</th></tr>`;
+  const standing = item => {
+    const p = item.standing;
+    if (!p) return `<span class="compare-unavailable">—</span><small>No complete published grade distribution</small>`;
+    const isApprox = !p.exact;
+    const value = `${isApprox ? '≈' : ''}${p.percentBelow.toFixed(1)}%`;
+    const range = isApprox ? `Possible range: ${p.lowerBound.toFixed(1)}–${p.upperBound.toFixed(1)}%` : 'Exact at a grade-band boundary';
+    return `<strong class="compare-percentile">${value}</strong><small>of published grades below ${targetGrade}%</small><small>${escapeHTML(p.session)} · n=${p.sampleSize.toLocaleString()} · ${range}</small>`;
+  };
+  const html = `<table class="comparison-table comparison-table-rich"><thead><tr><th scope="col">Metric</th>${subset.map(c => `<th scope="col">${escapeHTML(courseLabel(c))}</th>`).join('')}</tr></thead><tbody>
+    ${group('Course averages')}
+    ${row('Recent 5-year average', x => datum(x.average5))}
+    ${row('Latest published term average', x => datum(x.latestMean, x.latestMeanTerm || 'No published term'))}
+    ${row('Historical average', x => datum(x.average))}
+    ${group('Typical student grade')}
+    ${row('Median grade (50th percentile)', x => quartile(x, 'median'), 'Published for single sections; otherwise estimated from complete grade bands')}
+    ${row('25th-percentile grade', x => quartile(x, 'p25'))}
+    ${row('75th-percentile grade', x => quartile(x, 'p75'))}
+    ${row(`Standing at ${targetGrade}%`, standing, 'How many historical students scored BELOW this grade?')}
+    ${row('Students in most recent term', x => `<span class="compare-number">${x.latestStudents == null ? '—' : `${x.latestStudentsPartial ? '≥' : ''}${x.latestStudents.toLocaleString()}`}</span><small>${escapeHTML(x.latestTerm || '—')} · ${escapeHTML(x.latestStudentsKind || 'No student count')}</small>`)}
+    ${group('Historical extremes')}
+    ${row('Highest / lowest individual mark', x => `<span class="compare-number">${fmtPercent(x.highestMark)} / ${fmtPercent(x.lowestMark)}</span>`)}
+    ${row('Highest / lowest term mean', x => `<span class="compare-number">${fmtPercent(x.highestCourseMean)} / ${fmtPercent(x.lowestCourseMean)}</span>`)}
+  </tbody></table>`;
+  $('comparisonTable').innerHTML = html;
 }
+
+$('compareTargetGrade').addEventListener('input', () => {
+  if (!$('comparePanel').hidden) renderComparison();
+});
 
 $('importButton').addEventListener('click', () => {
   const parsed = parseSchedule($('scheduleInput').value, $('campusSelect').value);
