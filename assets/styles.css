@@ -211,3 +211,54 @@
 .planner-method p{max-width:1000px}
 @media(max-width:1030px){.planner-course-controls{grid-template-columns:75px 1fr 85px;row-gap:15px}.planner-completed,.planner-release{align-self:center;padding:0!important}}
 @media(max-width:730px){.grade-planner{padding:20px 15px}.planner-heading,.planner-control-row{align-items:stretch;flex-direction:column}.planner-heading h2{font-size:25px}.planner-target-input{width:max-content}.planner-summary-grid{grid-template-columns:1fr}.planner-summary-tile{padding:14px}.planner-summary-tile strong{font-size:25px}.planner-course-controls{grid-template-columns:75px minmax(0,1fr);gap:14px}.planner-grade-control{grid-column:2}.planner-manual-grade,.planner-completed,.planner-release{grid-column:auto}.planner-course-head{flex-direction:column;gap:5px}.planner-target-range{flex-direction:column;align-items:flex-start;gap:8px}}
+
+/* Course-specific, evidence-first instructor comparisons. */
+.instructor-panel{margin:26px 0 22px;padding:25px 23px;border:1px solid #d8e8df;border-radius:15px;background:#fcfefd}
+.instructor-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+.instructor-head h3{font-size:25px;letter-spacing:-.8px;color:#22483a;margin:7px 0 9px}
+.instructor-head p{font-size:12px;color:#6e897f;line-height:1.7;margin:0;max-width:710px}
+.instructor-head .soft-pill{white-space:nowrap}
+.instructor-controls{display:grid;grid-template-columns:1fr minmax(190px,1.25fr) 1fr;gap:10px;margin:23px 0 12px}
+.instructor-controls label{display:flex;flex-direction:column;gap:6px;font-size:11px;font-weight:740;color:#587467}
+.instructor-controls input,.instructor-controls select{width:100%;height:42px;border:1px solid #d6e4dc;border-radius:9px;background:#fff;padding:8px 10px;color:#27483c;font:inherit;font-size:13px;font-weight:500;min-width:0}
+.instructor-controls input:focus-visible,.instructor-controls select:focus-visible{outline:2px solid #40aa7d;outline-offset:1px}
+.instructor-caption,.instructor-disclaimer{font-size:11px;line-height:1.75;color:#789184;margin:13px 0}
+.instructor-disclaimer{padding-top:15px;border-top:1px solid #dbe8e1}
+.instructor-scroll{overflow-x:auto;border:1px solid #dfebe5;border-radius:11px;background:white;margin:15px 0 10px}
+.instructor-table{width:100%;border-collapse:collapse;min-width:780px;text-align:left;font-size:12px}
+.instructor-table th{font-size:10px;white-space:nowrap;background:#f3faf6;color:#597769;letter-spacing:.02em;font-weight:720;text-transform:uppercase;border-bottom:1px solid #dfece5;padding:13px 12px}
+.instructor-table td{padding:11px 12px;border-bottom:1px solid #eef2ef;vertical-align:middle;color:#3c584e}
+.instructor-table tr:last-child td{border-bottom:0}
+.instructor-table td strong{color:#23483a}
+.instructor-table td small{display:block;font-size:10px;color:#879a90;margin-top:4px;white-space:nowrap}
+.instructor-table tr.instructor-selected{background:#f3faf6}
+.instructor-table input[type=checkbox]{accent-color:#248c65;width:17px;height:17px;cursor:pointer}
+.instructor-table input[type=checkbox]:disabled{opacity:.4;cursor:not-allowed}
+.instructor-table .delta-positive{color:#247b5c}
+.instructor-table .delta-negative{color:#9c6250}
+.instructor-more{color:#227e5b;background:none;border:0;padding:8px 0;cursor:pointer;font-size:12px;font-weight:730}
+.instructor-charts-title{margin:29px 0 12px;display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.instructor-charts-title h4{font-size:17px;letter-spacing:-.3px;color:#284a3d;margin:0}
+.instructor-charts-title span{font-size:11px;color:#8a9e94}
+.instructor-compare-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:13px;margin:0 0 17px}
+.instructor-compare-card{min-width:0;padding:17px;border:1px solid #deede5;border-radius:11px;background:#fff;overflow:hidden}
+.instructor-compare-top{display:flex;flex-direction:column;gap:6px}
+.instructor-compare-top strong{font-size:14px;color:#205740}
+.instructor-compare-top span{font-size:11px;color:#90a39a}
+.instructor-compare-metrics{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:17px 0}
+.instructor-compare-metrics>div{display:flex;flex-direction:column;gap:4px}
+.instructor-compare-metrics small{color:#789486;font-size:10px}
+.instructor-compare-metrics b{font-size:19px;color:#284b3d;letter-spacing:-.5px}
+.instructor-grade-bars{display:grid;grid-template-columns:repeat(11,minmax(0,1fr));gap:3px;align-items:end;padding-top:8px}
+.instructor-grade-column{display:flex;flex-direction:column;gap:3px;min-width:0;text-align:center}
+.instructor-grade-value{height:13px;line-height:13px;font-size:8px;color:#2f8867}
+.instructor-grade-track{height:100px;border-bottom:1px solid #d5e6da;background:#f5faf7;border-radius:2px 2px 0 0;display:flex;align-items:end;overflow:hidden}
+.instructor-grade-track span{display:block;width:100%;background:linear-gradient(180deg,#30b185,#81ceb0);border-radius:2px 2px 0 0}
+.instructor-grade-column small{font-size:7px;white-space:nowrap;letter-spacing:-.45px;color:#769181}
+.instructor-no-bars{background:#f6f9f7;border:1px dashed #d9e6df;border-radius:8px;color:#718c7e;padding:20px;font-size:12px;line-height:1.6}
+.instructor-compare-card .detail-copy{font-size:10px;margin:14px 0 0}
+@media(max-width:850px){.instructor-controls{grid-template-columns:1fr 1fr}.instructor-controls label:nth-child(2){grid-column:1/-1;grid-row:2}.instructor-panel{padding:18px}}
+@media(max-width:520px){.instructor-head .soft-pill{display:none}.instructor-head h3{font-size:21px}.instructor-controls{grid-template-columns:1fr}.instructor-controls label:nth-child(2){grid-column:auto;grid-row:auto}.instructor-charts-title{flex-direction:column;align-items:flex-start}.instructor-compare-grid{grid-template-columns:1fr}}
+.course-quicklinks{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0 0}
+.course-quicklinks a{font-size:12px;font-weight:730;color:#258563;text-decoration:none;border:1px solid #d5e9dc;background:#f4fbf6;border-radius:20px;padding:8px 12px}
+.course-quicklinks a:hover,.course-quicklinks a:focus-visible{background:#dff4e8;text-decoration:underline}

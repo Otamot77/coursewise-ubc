@@ -105,3 +105,14 @@ test('My Classes includes the local-only grade goal planner', async () => {
   assert.equal(lib.status, 200);
   assert.match(await lib.text(), /calculateGradePlan/);
 });
+
+test('instructor comparison analytics module is served without needing private data', async () => {
+  const response = await fetch(`${root}/lib/instructors.mjs`);
+  assert.equal(response.status, 200);
+  const code = await response.text();
+  assert.match(code, /compareInstructors/);
+  assert.match(code, /shared/);
+  const app = await fetch(`${root}/assets/app.mjs`);
+  assert.equal(app.status, 200);
+  assert.match(await app.text(), /renderInstructorComparison/);
+});
