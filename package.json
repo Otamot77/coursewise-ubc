@@ -1,6 +1,6 @@
 {
   "name": "coursewise-ubc",
-  "version": "0.11.1",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "description": "A privacy-first UBC course insights and schedule companion",

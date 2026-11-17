@@ -75,7 +75,9 @@ test('full course report renders all loaded grade bands and section options with
   assert.match(html,/distribution-svg-bar/);
   assert.match(html,/Section 101/);
   assert.match(html,/80\.3%/);
-  assert.match(html,/Reported students/);
+  assert.match(html,/GRADE DIFFICULTY PASSPORT/);
+  assert.match(html,/Target grade/);
+  assert.match(html,/80%\+/);
 });
 
 test('My Classes restores saved courses and stats after navigating back from full report',async()=>{
@@ -102,8 +104,8 @@ test('instructor list prioritizes full section reports; comparison is secondary 
   assert.match(html,/history-hover-tooltip/);
   assert.match(html,/section-stats-visible/);
   assert.match(html,/Highest and lowest course-term averages/);
-  assert.match(html,/Grade spread \(std\. dev\.\)/);
-  assert.match(html,/Section median/);
+  assert.doesNotMatch(html,/Grade spread \(std\. dev\.\)/);
+  assert.match(html,/Median grade/);
   assert.match(html,/25th percentile/);
   assert.match(html,/Grades ≥ 50%/);
   assert.doesNotMatch(html,/<summary>More section statistics/);
@@ -121,7 +123,8 @@ test('deep-linked instructor full report shows section results and distribution'
   assert.match(html,/Prof Example/);
   assert.match(html,/Section-by-section results/);
   assert.match(html,/data-instructor-report-term/);
-  assert.match(html,/Grade spread \(SD\)/);
+  assert.doesNotMatch(html,/Grade spread \(SD\)/);
+  assert.match(html,/Find on Rate My Professors/);
   assert.match(html,/grade-distribution-svg/);
   assert.match(html,/80\.3%/);
   assert.match(html,/2025W/);

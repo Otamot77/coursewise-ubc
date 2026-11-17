@@ -422,3 +422,92 @@
 .section-stats-visible .secondary-stat-grid small{display:block;font-size:10px;line-height:1.45;color:#899d94;margin-top:5px}
 @media(max-width:900px){.instructor-report-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.instructor-compare-optional .instructor-compare-grid{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:560px){.instructor-full-report{padding:13px}.instructor-report-header{flex-direction:column}.instructor-report-metrics strong{font-size:17px}.historical-stat-summary .secondary-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.instructor-compare-optional-header{align-items:flex-start;flex-direction:column}}
+
+/* v1 — integrated Grade Difficulty Passport (no new page or duplicate histogram). */
+.grade-passport{border:1px solid #d5e9df;background:#fff;border-radius:14px;margin:18px 0;padding:22px;box-shadow:0 8px 26px #244d3510}
+.passport-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:17px}
+.passport-heading h4{margin:5px 0 0;font-size:20px;letter-spacing:-.55px;color:#20493e}
+.passport-term{color:#558370;font-size:11px;background:#f0f8f3;padding:7px 10px;border-radius:8px;white-space:nowrap}
+.passport-quick-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid #e1efe7;border-radius:11px;overflow:hidden;margin-bottom:21px}
+.passport-quick-stats>div{padding:13px 15px;display:flex;flex-direction:column;gap:5px;min-width:0}
+.passport-quick-stats>div+div{border-left:1px solid #e1efe7}
+.passport-quick-stats span{font-size:11px;color:#708e80;line-height:1.4}
+.passport-quick-stats strong{font-size:27px;letter-spacing:-.8px;color:#20493e;font-weight:760}
+.passport-quick-stats small{font-size:10px;color:#7f958e;line-height:1.4}
+.passport-interaction{border-radius:11px;padding:15px;background:#f5faf7;border:1px solid #e0eee5}
+.passport-interaction label{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:700;color:#47675b}
+.passport-interaction label strong{font-size:23px;color:#1d7359;font-variant-numeric:tabular-nums}
+.passport-interaction input[type=range]{width:100%;accent-color:#289b77;margin:13px 0 8px;cursor:pointer;min-height:23px}
+.passport-standing{display:flex;flex-direction:column;gap:5px;border-top:1px solid #dbebe2;padding-top:12px;color:#567f72}
+.passport-standing strong{font-size:30px;font-weight:780;letter-spacing:-1px;color:#164f3f;font-variant-numeric:tabular-nums}
+.passport-standing strong span{font-size:13px;letter-spacing:0;color:#668678;font-weight:550}
+.passport-standing>span{font-size:11px;line-height:1.6}
+.passport-rarity-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:14px}
+.passport-rarity{background:#f9fcfa;border:1px solid #e4eee9;border-radius:9px;padding:10px 13px;display:flex;justify-content:space-between;align-items:center;gap:6px}
+.passport-rarity span{font-size:11px;color:#627e74}.passport-rarity strong{font-size:16px;color:#266e56;font-variant-numeric:tabular-nums}
+.passport-coverage{font-size:11px;line-height:1.6;color:#407864;margin:14px 0 0}
+.passport-consistency,.passport-method{font-size:11px;color:#6d867a;line-height:1.65;margin:8px 0 0}
+.passport-consistency strong{color:#2e6757}
+.instructor-rmp-link{display:inline-flex;margin-top:8px;color:#208160!important;font-size:12px;font-weight:700;text-decoration:none}
+.instructor-rmp-link:hover{text-decoration:underline}
+@media(max-width:720px){.grade-passport{padding:15px}.passport-heading{flex-direction:column}.passport-quick-stats strong{font-size:20px}.passport-quick-stats>div{padding:10px 8px}.passport-rarity-list{gap:5px}.passport-rarity{padding:9px 7px;flex-wrap:wrap}.passport-rarity strong{font-size:14px}}
+
+/* v1 — saved lineups and grades-only what-if swaps. */
+.saved-lineup-bar{margin:20px auto 24px;padding:14px 18px;background:white;border:1px solid #dcebe4;border-radius:12px;display:flex;justify-content:space-between;gap:15px;align-items:center;flex-wrap:wrap}
+.saved-lineup-main{display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+.saved-lineup-main label{color:#4b7765;font-size:11px;font-weight:750}
+.saved-lineup-main select{min-width:170px;max-width:320px;border:1px solid #dce8e1;background:#f9fcfa;border-radius:8px;padding:10px 12px;color:#23493d;font-weight:700;font-size:12px}
+.saved-lineup-count{font-size:10px;color:#8ba49a}
+.saved-lineup-buttons{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.saved-lineup-buttons>.outline-btn{padding:9px 12px!important;font-size:11px!important}
+.saved-lineup-buttons button:disabled{opacity:.4;cursor:not-allowed}
+.lineup-more{position:relative;font-size:11px;color:#487763}
+.lineup-more summary{cursor:pointer;padding:9px 10px;border-radius:7px;list-style:none;border:1px solid #dce8e1}
+.lineup-more>div{position:absolute;right:0;top:34px;z-index:5;background:white;border:1px solid #d9eae1;border-radius:9px;padding:10px;display:flex;gap:7px;box-shadow:0 10px 20px #244e351e}
+.lineup-swap-button{background:#edf9f2;border:1px solid #c7e9d8;border-radius:7px;color:#237451;font-size:11px;font-weight:720;padding:8px 10px;cursor:pointer}
+.lineup-swap-button:hover{background:#d7f1e2}
+.swap-panel{border:1px solid #cfe4d8;background:#fff;border-radius:13px;padding:24px;margin:23px 0 25px;scroll-margin-top:85px;box-shadow:0 8px 23px #1a4f3110}
+.swap-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:15px}
+.swap-heading h3{font-size:21px;letter-spacing:-.6px;margin:6px 0 0;color:#234f3e}
+.swap-heading h3 span{color:#9cbaab}
+.swap-intro,.swap-foot{font-size:11px;color:#7c9387;line-height:1.65;margin:13px 0}
+.swap-search{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin:18px 0}
+.swap-search label{width:100%;font-size:11px;color:#648472;font-weight:720}
+.swap-search input{flex:1;min-width:180px;background:#fcfffd;border:1px solid #cde3d6;border-radius:8px;padding:12px 13px;font-size:13px}
+.swap-search button{min-height:40px;border:0;border-radius:8px;padding:9px 17px}
+.swap-status{font-size:11px;color:#3b7e62;margin:7px 0}
+.swap-status.error{color:#bc5f38}
+.swap-metrics{border:1px solid #e0ece6;border-radius:10px;overflow:hidden}
+.swap-metric-head,.swap-metric-row{display:grid;grid-template-columns:minmax(130px,1.5fr) minmax(65px,1fr) 25px minmax(65px,1fr);gap:9px;align-items:center;padding:12px 15px}
+.swap-metric-head{background:#f3f9f5;color:#58806d;font-size:10px;font-weight:800}
+.swap-metric-row{font-size:12px;color:#506d5e;border-top:1px solid #edf3ef}
+.swap-metric-row strong{font-variant-numeric:tabular-nums;color:#245742;font-size:16px}
+.swap-metric-row small{grid-column:1/-1;color:#90a399;font-size:10px}
+.swap-arrow{font-size:14px;color:#86b49f;text-align:center}
+.swap-actions{display:flex;justify-content:flex-end;gap:9px;flex-wrap:wrap;margin-top:16px}
+.swap-actions button{border-radius:8px;padding:11px 15px;font-size:12px}
+.swap-undo-notice{margin:16px 0;display:flex;align-items:center;gap:16px;justify-content:space-between;background:#eef8f2;border:1px solid #cbe4d4;border-radius:9px;padding:12px 17px;color:#31654e;font-size:12px}
+.swap-undo-notice[hidden],.swap-panel[hidden]{display:none!important}
+@media(max-width:650px){.saved-lineup-bar{align-items:flex-start}.saved-lineup-main{width:100%}.saved-lineup-main select{flex:1;min-width:130px}.swap-panel{padding:15px}.swap-metric-head,.swap-metric-row{grid-template-columns:minmax(90px,1.3fr) minmax(45px,1fr) 12px minmax(45px,1fr);padding:10px 8px;gap:5px}.swap-metric-row strong{font-size:12px}.swap-metric-head{font-size:9px}.swap-search button{width:100%}}
+/* v1 catalog: advanced historical evidence filters, closed unless requested. */
+.catalog-advanced{border:1px solid #e0ede6;background:#fafdfb;border-radius:10px;padding:13px 17px;margin:15px 0}
+.catalog-advanced summary{color:#39735a;font-size:12px;font-weight:750;cursor:pointer}
+.catalog-advanced summary span{font-size:10px;color:#91a79b;font-weight:450;margin-left:10px}
+.catalog-advanced-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px;align-items:end;margin-top:17px}
+.catalog-advanced-grid label{font-size:11px;color:#597c6b;display:flex;flex-direction:column;gap:9px}
+.catalog-advanced-grid select{border:1px solid #dbe9e0;background:#fff;padding:10px;border-radius:8px;color:#315747;min-width:0;width:100%}
+.catalog-advanced-grid .catalog-filter-check{flex-direction:row;align-items:center;gap:9px;padding-bottom:10px}
+.catalog-advanced>p{color:#80978b;font-size:10px;line-height:1.6;margin-bottom:0}
+.catalog-grade-evidence{font-size:11px;color:#35785e;background:#f2faf5;padding:8px 10px;border-radius:7px;display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.catalog-grade-evidence b{color:#1c7858}.catalog-grade-evidence small{color:#8b9f96;font-size:10px}
+@media(max-width:720px){.catalog-advanced-grid{grid-template-columns:1fr}.catalog-advanced-grid .catalog-filter-check{padding:4px 0}}
+.instructor-report-timeline{margin:18px 0;border:1px solid #dcebe4;background:#f8fcfa;border-radius:11px;padding:18px}
+.instructor-report-timeline h5{font-size:15px;color:#285645;margin:0 0 5px}
+.instructor-report-timeline p{color:#779084;font-size:11px;line-height:1.65;margin:6px 0 10px}
+.instructor-timeline-svg{width:100%;height:auto;display:block;max-height:290px}
+.instructor-timeline-point:focus-visible circle:first-of-type{stroke:#16593f;stroke-width:3px}
+/* Keep saved-lineup and Workday controls inside narrow phone viewports. */
+@media(max-width:720px){
+  .workspace-grid{grid-template-columns:minmax(0,1fr)}
+  .workspace-grid>.import-card,.workspace-grid>.results-panel{width:100%;min-width:0}
+}

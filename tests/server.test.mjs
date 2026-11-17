@@ -179,3 +179,42 @@ test('each route renders its own view immediately, without flashing the home pag
   }
 });
 
+
+
+test('data-backed grade discovery only compares fully published distributions and validates filters', async () => {
+  for (const q of ['min85=99', 'recentComplete=2', 'sort=bogus', 'maxRange=-1']) {
+    const response=await fetch(`${root}/api/catalog?campus=UBCV&${q}`);
+    // The standalone source-only distribution has no private catalog.
+    if (response.status===404) continue;
+    assert.equal(response.status,400,q);
+  }
+  const response=await fetch(`${root}/api/catalog?campus=UBCV&subject=CPEN&q=CPEN%20211&sort=attain85&min85=10&recentComplete=1`);
+  if(response.status===404)return;
+  assert.equal(response.status,200);
+  const result=await response.json();
+  assert.ok(result.total>=1);
+  assert.ok(result.results.every(row=>row.attain85>=10 && row.distributionTerm && Number(row.distributionTerm.slice(0,4))>=2021));
+  assert.ok(result.results.every(row=>Number.isFinite(row.distributionN) && row.distributionN>0));
+  assert.ok(result.results.every(row=>!('distribution' in row) && !('recentSections' in row)));
+  const stability=await fetch(`${root}/api/catalog?campus=UBCV&sort=consistent&maxRange=10`);
+  assert.equal(stability.status,200);
+  const consistent=await stability.json();
+  assert.ok(consistent.results.every(row=>row.consistencyRange!==null && row.consistencyRange<=10));
+});
+
+test('My Classes serves lineup and swap controls; course reports serve the Passport', async () => {
+  const classes=await (await fetch(`${root}/my-classes`)).text();
+  for(const id of ['lineupSelect','newLineup','duplicateLineup','renameLineup','deleteLineup','swapPanel','undoSwapNotice'])
+    assert.ok(classes.includes(`id="${id}"`),id);
+  const app=await (await fetch(`${root}/assets/app.mjs`)).text();
+  assert.match(app,/data-passport-target/);
+  assert.match(app,/historicSemesterBaseline/);
+  assert.match(app,/Find on Rate My Professors/);
+  assert.doesNotMatch(app,/Grade spread \(std\. dev\.\)/);
+  const p=await fetch(`${root}/lib/passport.mjs`);
+  assert.equal(p.status,200);
+  assert.match(await p.text(),/attainmentAtGrade/);
+  const options=await fetch(`${root}/lib/lineups.mjs`);
+  assert.equal(options.status,200);
+  assert.match(await options.text(),/swapCourse/);
+});

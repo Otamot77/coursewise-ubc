@@ -5,6 +5,7 @@ import { gunzipSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { validApiPath } from './lib/grades.mjs';
+import { chooseDistribution } from './lib/planner.mjs';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 4173);
@@ -30,8 +31,16 @@ try {
       const title = profile.stats?.course_title || '';
       const average = profile.stats?.average ?? null;
       const latest = profile.coverage?.latestPublished || profile.coverage?.latest || '';
+      const dist=chooseDistribution(profile);
+      const attain85=dist ? 100 * (dist.bins[9]+dist.bins[10]) / dist.n : null;
+      const years=profile.history?.yearsessions ?? {};
+      const history=Object.entries(years).filter(([term,val])=>/^\d{4}[WS]$/.test(term)&&typeof val==='number'&&Number.isFinite(val));
+      const latestHistoryYear=history.length?Math.max(...history.map(([t])=>Number(t.slice(0,4)))):null;
+      const recentHistory=latestHistoryYear==null?[]:history.filter(([t])=>Number(t.slice(0,4))>=latestHistoryYear-4);
+      const consistencyRange=recentHistory.length>=3 ? Math.max(...recentHistory.map(([,v])=>v))-Math.min(...recentHistory.map(([,v])=>v)):null;
       return { campus, subject, course, title, average, latest,
-        sessions: profile.coverage?.yearsessions ?? 0 };
+        sessions: profile.coverage?.yearsessions ?? 0,attain85,
+        distributionTerm:dist?.session??null,distributionN:dist?.n??null,consistencyRange };
     });
     catalogSubjects = {
       UBCV: [...new Set(catalog.filter(c => c.campus === 'UBCV').map(c => c.subject))].sort(),
@@ -143,17 +152,25 @@ const server = http.createServer(async (req, res) => {
     const level = url.searchParams.get('level') || '';
     const q = (url.searchParams.get('q') || '').trim().toUpperCase().replace(/\s+/g, ' ');
     const sort = url.searchParams.get('sort') || 'recent';
+    const min85 = url.searchParams.get('min85') || '';
+    const fullRecent = url.searchParams.get('recentComplete') || '';
+    const consistency = url.searchParams.get('maxRange') || '';
     const pageValue = Number(url.searchParams.get('page') || 1);
     if (!/^(UBCV|UBCO)$/.test(campus) || (subject && !/^[A-Z]{2,6}$/.test(subject)) || (subjectPrefix && !/^[A-Z]{1,6}$/.test(subjectPrefix)) || !['', '100','200','300','400','500','600'].includes(level) || q.length > 80 ||
-        !['recent', 'name', 'average'].includes(sort) || !Number.isInteger(pageValue) || pageValue < 1 || pageValue > 10000) {
+        !['recent', 'name', 'average','attain85','consistent'].includes(sort) || !['','10','20','30','40','50'].includes(min85) || !['','1'].includes(fullRecent) || !['','10','15','20'].includes(consistency) || !Number.isInteger(pageValue) || pageValue < 1 || pageValue > 10000) {
       return sendJSON(res, 400, { error: 'Invalid catalog filters.' });
     }
     const filtered = catalog.filter(x => x.campus === campus && (!subject || x.subject === subject) && (!subjectPrefix || x.subject.startsWith(subjectPrefix)) && (!level || (level === '600' ? Number(x.course.slice(0,3)) >= 600 : Math.floor(Number(x.course.slice(0,3)) / 100) * 100 === Number(level))) &&
       (!q || `${x.subject} ${x.course} ${x.subject}${x.course} ${x.title}`.toUpperCase().includes(q) ||
-        `${x.subject} ${x.course}`.includes(q.replace(/_/g, ' '))));
+        `${x.subject} ${x.course}`.includes(q.replace(/_/g, ' '))) &&
+      (!min85 || x.attain85 !== null && x.attain85>=Number(min85)) &&
+      (!fullRecent || x.distributionTerm && Number(x.distributionTerm.slice(0,4))>=2021) &&
+      (!consistency || x.consistencyRange !== null && x.consistencyRange<=Number(consistency)));
     filtered.sort((a, b) => {
       if (sort === 'name') return `${a.subject} ${a.course}`.localeCompare(`${b.subject} ${b.course}`);
       if (sort === 'average') return (b.average ?? -1) - (a.average ?? -1) || `${a.subject} ${a.course}`.localeCompare(`${b.subject} ${b.course}`);
+      if (sort === 'attain85') return (b.attain85 ?? -1) - (a.attain85 ?? -1) || `${a.subject} ${a.course}`.localeCompare(`${b.subject} ${b.course}`);
+      if (sort === 'consistent') return (a.consistencyRange ?? Infinity) - (b.consistencyRange ?? Infinity) || `${a.subject} ${a.course}`.localeCompare(`${b.subject} ${b.course}`);
       return b.latest.localeCompare(a.latest) || `${a.subject} ${a.course}`.localeCompare(`${b.subject} ${b.course}`);
     });
     const perPage = 9;
