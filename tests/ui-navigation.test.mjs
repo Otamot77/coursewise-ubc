@@ -87,9 +87,16 @@ test('course reports show the new instructor bar chart and explain term-matched 
   const html=state.get('courseView').innerHTML;
   assert.match(html,/instructor-dist-svg/);
   assert.match(html,/instructor-dist-bar/);
-  assert.match(html,/Difference vs course/);
-  assert.match(html,/academic terms they taught/);
+  assert.match(html,/vs same-term/);
+  assert.match(html,/percentage-point difference/);
   assert.match(html,/history-hover-tooltip/);
+  assert.match(html,/section-stats-visible/);
+  assert.match(html,/historical-stat-summary/);
+  assert.match(html,/Section median/);
+  assert.match(html,/25th percentile/);
+  assert.match(html,/75th percentile/);
+  assert.match(html,/Grades ≥ 50%/);
+  assert.doesNotMatch(html,/<summary>More section statistics/);
 });
 
 test('sticky navigation, Grade Goals shortcut and credit explanation are present on all pages',async()=>{

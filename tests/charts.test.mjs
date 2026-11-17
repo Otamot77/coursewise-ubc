@@ -50,12 +50,17 @@ test('instructor distributions render actual SVG bars on a shared percent scale'
   const peer=instructorDistributionSvg(second,second.map(x=>x*30),{scaleMax:22,title:'Instructor B'});
   assert.match(output,/class="instructor-dist-svg"/);
   assert.match(output,/class="instructor-dist-bar" data-percent="22\.00"/);
-  assert.match(output,/height="120\.56"/);
+  assert.match(output,/height="108\.24"/);
   assert.match(peer,/data-percent="15\.00"/);
   assert.match(peer,/>25%<\/text>/); // top tick is identical for both charts
   assert.match(output,/>25%<\/text>/);
   assert.doesNotMatch(output,/style="height:/);
   assert.equal((output.match(/class="instructor-dist-bar"/g)||[]).length,11);
   assert.equal((peer.match(/class="instructor-dist-bar"/g)||[]).length,11);
+  assert.match(output,/viewBox="0 0 482 190"/);
+  assert.match(output,/tabindex="0" aria-label=/);
+  assert.equal((output.match(/font-size="11" fill="#627f73"/g)||[]).length,11);
+  assert.match(output,/width="22" height="108\.24"/);
+  assert.match(output,/90\+/);
   assert.match(instructorDistributionSvg(null),/No complete published/);
 });

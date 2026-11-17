@@ -352,3 +352,21 @@
   .instructor-dist-svg{min-width:550px}
   #gradePlanner,#instructor-comparison,#course-distribution{scroll-margin-top:128px}
 }
+
+/* v0.9 — full-width legible instructor histograms and visible section stats. */
+.instructor-compare-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:15px}
+.instructor-compare-card{padding:16px;overflow:visible}
+.instructor-dist-scroll{overflow:visible;width:100%;margin:9px 0 8px}
+.instructor-dist-svg{display:block;width:100%;min-width:0;max-width:100%;height:auto}
+.instructor-dist-group:focus-visible{outline:0}
+.instructor-dist-group:focus-visible .instructor-dist-bar{stroke:#165d46;stroke-width:2}
+.instructor-compare-card .detail-copy{font-size:11px;line-height:1.6}
+.section-stats-visible,.historical-stat-summary{margin:19px 0 21px;border-top:1px solid #e4eee8;padding:18px 0 0}
+.section-stats-title{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.section-stats-title h4,.section-stats-title h5{margin:0;font-size:15px;color:#244b3c;letter-spacing:-.2px}
+.section-stats-title span{color:#8aa097;font-size:11px}
+.section-stats-visible .secondary-stat-grid{grid-template-columns:repeat(3,minmax(0,1fr));margin:0 0 9px}
+.historical-stat-summary .secondary-stat-grid{margin:0}
+.section-stats-visible .secondary-stat-grid span,.historical-stat-summary .secondary-stat-grid span{font-size:11px}
+@media(max-width:950px){.instructor-compare-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr))}.section-stats-visible .secondary-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){.instructor-compare-grid{grid-template-columns:minmax(0,1fr)}.instructor-dist-svg{min-width:0}.secondary-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}

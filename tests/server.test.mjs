@@ -142,5 +142,14 @@ test('course reports use explicit SVG histograms and saved lineups show compact 
   const body=await app.text();
   assert.match(body,/function renderCourseOverview/);
   assert.match(body,/lineup-highlights/);
-  assert.match(body,/More historical statistics/);
+  assert.match(body,/Historical highs and lows/);
+});
+
+test('data source and footer distinguish UBC publication from community archive',async()=>{
+  const page=await fetch(`${root}/data`);
+  const html=await page.text();
+  assert.match(html,/community-maintained archive/);
+  assert.match(html,/cio.ubc.ca\/grade-distribution-report/);
+  assert.match(html,/github.com\/DonneyF\/ubc-pair-grade-data/);
+  assert.match(html,/UBCGrades API/);
 });

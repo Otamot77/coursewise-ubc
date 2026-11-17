@@ -85,6 +85,15 @@ test('section metadata normalizes medians, high lows and suppressed distribution
 test('pass rate uses graded outcomes only, not withdrawals or missing modern data', () => {
   const older = aggregateDistributions([{reported:100, reportedKind:'Enrolled', statusCounts:{Pass:80,Fail:10,Withdrew:10}}]);
   assert.ok(Math.abs(older.passRate - 88.8888889) < 0.0001);
+  assert.equal(older.passRateSource,'status');
   const newer = aggregateDistributions([{reported:100, reportedKind:'Reported', statusCounts:{Pass:null,Fail:null}}]);
   assert.equal(newer.passRate,null);
+  const complete = { '<50':2, '50-54':3, '55-59':0, '60-63':4, '64-67':0,
+    '68-71':1, '72-75':0, '76-79':0, '80-84':5, '85-89':0, '90-100':5 };
+  const gradeBands = aggregateDistributions([{reported:20,reportedKind:'Reported',distribution:complete,statusCounts:{}}]);
+  assert.equal(gradeBands.passRate,90);
+  assert.equal(gradeBands.passRateSource,'grade-bands');
+  const withheld = aggregateDistributions([{reported:20,reportedKind:'Reported',distribution:{...complete,'<50':null},statusCounts:{}}]);
+  assert.equal(withheld.passRate,null);
+  assert.equal(withheld.passRateSource,null);
 });

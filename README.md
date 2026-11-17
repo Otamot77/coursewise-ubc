@@ -2,7 +2,7 @@
 
 An independent, unofficial UBC course explorer. Search **all 21,280 normalized campus/course-code entries in the supplied PAIR archive**, inspect published grade distributions and section statistics, and paste a saved/registered Workday schedule or upload its `.xlsx` export to see your courses together. Inspired by the MIT-licensed [UBCGrades](https://ubcgrades.com); source data originally compiled in [ubc-pair-grade-data](https://github.com/DonneyF/ubc-pair-grade-data). **The MIT license here covers only Coursewise code, not the upstream archive.**
 
-## Interface (v0.8.0)
+## Interface (v0.9.0)
 
 Coursewise now has **separate, directly navigable pages** (one view at a time):
 
@@ -42,7 +42,15 @@ The updated SVG geometry, chart tooltips, view markup, and sticky navigation hav
 - **More useful My Classes lineup:** each saved course now displays recent five-year mean, latest published term mean, all-time mean, a mini historical trend and data coverage without opening Full report.
 - **Workday Excel imports:** choose a local `.xlsx` file in My Classes. Coursewise reads shared strings, inline strings, multiple worksheets and separate section columns, then previews **only extracted course codes and section numbers** in the text box; click **Find my courses** to add them. The workbook is never uploaded. Supports files under 8 MB in recent Chrome, Edge and Firefox using browser-native ZIP decompression. This is an initial format-compatible implementation; a real user-provided Workday Excel export is still needed to validate every Workday layout. Password-protected spreadsheets, legacy `.xls`, PDF and direct Workday account access are not supported.
 
-## Features (v0.8.0)
+## Improvements in v0.9
+
+- Instructor charts now use narrow bars and a **482-unit SVG viewport** with clearly labelled grade bands. All 11 bins fit into a comparison card without horizontal scrolling. At smaller widths, cards wrap to new rows rather than shrinking labels or clipping axes. Hover or focus individual bars for exact percentages and counts.
+- The instructor table uses **vs same-term sections** with +/- percentage-point differences rendered as `%` for easy scanning. These are **percentage-point differences**, not relative percent changes, and remain descriptive, not causal.
+- Section median has a permanent card, even when unavailable (`—`); highest/lowest individual marks, 25th/75th percentiles, standard deviation and pass rate are visible (not tucked in a collapsed details element). Historical course mean highs and lows are visible in a compact secondary strip.
+- **Availability:** the newest Tableau v2 rows publish median and quartiles but no standard deviation. Earlier Tableau/PAIR rows publish standard deviation; legacy PAIR rows contain pass/fail status counts. Some selected terms and multi-section views have no comparable statistics.
+- **Provenance:** original grade information was published by UBC; the downloaded local index derives from the [community-maintained UBC PAIR archive](https://github.com/DonneyF/ubc-pair-grade-data), rather than directly querying UBC systems. The [official UBC Grade Distribution Report](https://cio.ubc.ca/grade-distribution-report) may require UBC-specific access. If no matching local record exists, an [UBCGrades API](https://ubcgrades.com/api-reference) fallback is attempted. Source and licensing limits still apply.
+
+## Features (v0.9.0)
 
 - **Single-course search first** and a compact course catalog. Filter by campus, course-level (100 through 500; 600+), and subject code by typing its initial letters; search by course code/title and sort by historical mean or recent record. Browse nine courses per page. Select one for a standalone report.
 - **Course high/low statistics:** highest/lowest *historical course session mean*, alongside highest/lowest recorded individual marks when provided. These are different metrics and clearly labeled.
@@ -75,14 +83,14 @@ The repo **intentionally does not include any raw/derived grade dataset** pendin
 
 ### Running the complete data-included ZIP on Windows
 
-If you downloaded **`coursewise-ubc-v0.8-with-data.zip`**, extract it. In PowerShell, **change into the inner `coursewise-ubc` folder** containing `package.json`:
+If you downloaded **`coursewise-ubc-v0.9-with-data.zip`**, extract it. In PowerShell, **change into the inner `coursewise-ubc` folder** containing `package.json`:
 
 ```powershell
-cd "$HOME\Downloads\coursewise-ubc-v0.8-with-data\coursewise-ubc"
+cd "$HOME\Downloads\coursewise-ubc-v0.9-with-data\coursewise-ubc"
 npm start
 ```
 
-The ZIP already contains `data/course-index.json.gz`, `data/coverage.json` and `data/metadata.json`; **do not rerun the importer** for this download. If you have an older ZIP, stop its server with Ctrl+C first and start the v0.8 build. GitHub's source-only version still requires an import.
+The ZIP already contains `data/course-index.json.gz`, `data/coverage.json` and `data/metadata.json`; **do not rerun the importer** for this download. If you have an older ZIP, stop its server with Ctrl+C first and start the v0.9 build. GitHub's source-only version still requires an import.
 
 ## Tests
 
