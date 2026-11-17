@@ -167,11 +167,11 @@ test('each route renders its own view immediately, without flashing the home pag
     const response = await fetch(`${root}${path}`);
     assert.equal(response.status, 200, path);
     const html = await response.text();
-    const sections = [...html.matchAll(/<section\\b[^>]*\\bdata-page="([^"]+)"[^>]*>/g)]
+    const sections = [...html.matchAll(/<section\b[^>]*\bdata-page="([^"]+)"[^>]*>/g)]
       .map(([tag, name]) => ({
         name,
-        active: /\\bis-active\\b/.test(tag),
-        hidden: /\\shidden(?=\\s|>)/.test(tag)
+        active: /\bis-active\b/.test(tag),
+        hidden: /\shidden(?=\s|>)/.test(tag)
       }));
     assert.equal(sections.length, 6, `Expected six page views at ${path}`);
     assert.deepEqual(sections.filter(view => view.active).map(view => view.name), [expected], path);
