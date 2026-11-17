@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#f8fafc" />
+  <meta name="description" content="Plan better with your whole UBC schedule, historical grades and teaching context in one place." />
+  <title>Coursewise — Better course decisions at UBC</title>
+  <link rel="stylesheet" href="/assets/styles.css" />
+  <script type="module" src="/assets/app.mjs"></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="shell header-inner">
+      <a href="#home" class="brand" aria-label="Coursewise home"><span class="brand-icon"><svg viewBox="0 0 28 28" width="26" height="26" fill="none"><path d="M6 20V8h4.5v12M14 20V4h4.5v16M22 20v-9" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>coursewise<span class="brand-period">.</span></span></a>
+      <nav class="desktop-nav" aria-label="Main navigation"><a class="active" href="#workspace">My courses</a><a href="#discover">Explore</a><a href="#coverage">Data & sources</a></nav>
+      <span class="header-tag"><span class="green-dot"></span> Independent UBC project</span>
+    </div>
+  </header>
+  <main id="home">
+    <section class="hero shell">
+      <div class="eyebrow"><span class="eyebrow-icon">✦</span> THE SMARTER WAY TO PLAN YOUR SEMESTER</div>
+      <h1>Know your courses.<br/><span>Before you take them.</span></h1>
+      <p>From one course to your entire schedule—explore historical grades, instructor history, and the context behind every class.</p>
+      <div class="hero-links"><a href="#workspace" class="link-primary">Analyze my schedule <span aria-hidden="true">↗</span></a><a href="#discover" class="link-secondary">Explore a course <span aria-hidden="true">→</span></a></div>
+      <div class="trust-line"><span>◈ Historical grade data</span><span>◈ UBC Vancouver + Okanagan</span><span>◈ No Workday login needed</span></div>
+    </section>
+
+    <section class="shell workspace-section" id="workspace">
+      <div class="section-header"><div><span class="section-index">01 / YOUR SEMESTER</span><h2>Your courses, all in one place.</h2><p>Import a Workday schedule or add classes individually.</p></div><span class="soft-pill">LOCAL-ONLY SCHEDULE</span></div>
+      <div class="workspace-grid">
+        <aside class="import-card">
+          <div class="import-top"><span class="mini-icon">⇪</span><span class="chip">WORKDAY FRIENDLY</span></div>
+          <h3>Import your schedule</h3><p>Copy your registered or saved schedule from Workday and paste it here. We’ll find the course codes for you.</p>
+          <label for="scheduleInput" class="input-label">PASTE YOUR SCHEDULE</label>
+          <textarea id="scheduleInput" spellcheck="false" placeholder="Paste your Workday course list here...&#10;&#10;Example:&#10;CPEN_V 221 - 101&#10;MATH_V 200 - 201&#10;CPSC_V 210 - 101"></textarea>
+          <div class="input-help">Supports copied text, course codes, and some exported schedule formats.</div>
+          <div class="file-row"><label for="scheduleFile" class="file-button">＋ Upload .txt / .csv / .ics</label><input type="file" id="scheduleFile" accept=".txt,.csv,.ics,.html,.htm,text/plain,text/calendar,text/csv,text/html" /><span id="fileName"></span></div>
+          <button id="importButton" class="btn-solid" type="button">Find my courses <span aria-hidden="true">→</span></button>
+          <p id="importMessage" role="status" class="feedback"></p>
+          <div class="privacy-note"><span aria-hidden="true">♧</span><span>Your pasted schedule is parsed in your browser, not uploaded. Only extracted course codes are saved on this device.</span></div>
+        </aside>
+        <div class="results-panel">
+          <div class="results-toolbar"><div><h3>My course lineup <span id="courseCount" class="count">0</span></h3><span id="dataStatus" class="muted-caption">Add courses to see their historical insights.</span></div><div class="toolbar-actions"><label class="select-wrap"><span class="sr-only">Campus</span><select id="campusSelect" aria-label="Default campus"><option value="UBCV">UBC Vancouver</option><option value="UBCO">UBC Okanagan</option></select></label><button id="clearButton" class="text-button" type="button">Clear</button></div></div>
+          <form id="manualForm" class="manual-search"><span class="search-glyph">⌕</span><input id="manualCode" autocomplete="off" aria-label="Add course" placeholder="Add a course: e.g. CPEN 221, CPSC 210" /><button type="submit" id="addButton">Add course <span aria-hidden="true">+</span></button></form>
+          <div id="courseEmpty" class="course-empty"><div class="empty-illustration" aria-hidden="true"><span class="illustration-card back"></span><span class="illustration-card front"><span class="illus-line wide"></span><span class="illus-line medium"></span><span class="illus-chart"><i></i><i></i><i></i><i></i><i></i></span></span></div><h4>Your semester starts here.</h4><p>Import a Workday schedule, or add your first course above.</p><button id="exampleButton" type="button" class="outline-btn">Try an example lineup <span aria-hidden="true">↗</span></button></div>
+          <div id="insightPanel" class="insight-panel" hidden><div class="summary-grid"><div class="summary-metric"><div class="summary-label">Courses</div><strong id="totalCourses">0</strong><span>in your lineup</span></div><div class="summary-metric"><div class="summary-label">Historical data</div><strong id="coveredCourses">0 / 0</strong><span>courses with published averages</span></div><div class="summary-metric"><div class="summary-label">Average of course means</div><strong id="semesterAverage">—</strong><span>unweighted; not a GPA forecast</span></div></div><div class="list-controls"><div class="small-caps">COURSE BREAKDOWN</div><label>Sort by <select id="sortSelect"><option value="original">Added order</option><option value="average5">Highest recent recorded mean</option><option value="name">Course code</option></select></label></div><div id="courseCards" class="course-list" aria-live="polite"></div></div>
+        </div>
+      </div>
+      <div id="compareStrip" class="compare-strip" hidden><span id="compareText">0 selected for comparison</span><div><button id="resetCompare" class="text-button">Clear</button><button id="showCompare" class="btn-solid small">Compare courses →</button></div></div>
+      <div id="comparePanel" class="compare-panel" hidden><div class="flex-between"><h3>Side-by-side comparison</h3><button id="closeCompare" class="icon-btn" aria-label="Close comparison">✕</button></div><div id="comparisonTable" class="table-scroller"></div><p class="table-footnote">These are historical course averages, not predicted personal grades. Instructor and section differences can be substantial.</p></div>
+    </section>
+
+    <section class="shell discover-section" id="discover"><div class="section-header"><div><span class="section-index">02 / EXPLORE</span><h2>Start with a course.</h2><p>Popular starting points—select one to fetch its historical data.</p></div></div><div class="explore-grid"><button class="explore-tile" data-course="CPSC 110"><span class="explore-symbol">{ }</span><span class="explore-body"><strong>CPSC 110</strong><small>Computation, programs & programming</small></span><span class="tile-arrow">↗</span></button><button class="explore-tile" data-course="MATH 100"><span class="explore-symbol">∑</span><span class="explore-body"><strong>MATH 100</strong><small>Differential calculus</small></span><span class="tile-arrow">↗</span></button><button class="explore-tile" data-course="CPEN 221"><span class="explore-symbol">⌘</span><span class="explore-body"><strong>CPEN 221</strong><small>Software construction</small></span><span class="tile-arrow">↗</span></button><button class="explore-tile" data-course="CHEM 121"><span class="explore-symbol">⌬</span><span class="explore-body"><strong>CHEM 121</strong><small>General chemistry</small></span><span class="tile-arrow">↗</span></button></div></section>
+
+    <section class="shell source-section" id="coverage"><div class="section-header"><div><span class="section-index">03 / TRANSPARENCY</span><h2>Better insights. Clearer sources.</h2><p>Knowing what the data can't tell you is part of making a good decision.</p></div></div><div class="source-grid"><article><div class="source-number">01</div><h3>Real grade data, not guesses.</h3><p>Course averages are indexed directly from the provided UBC PAIR grade CSV archive, with a public API fallback for unindexed codes. We never invent unavailable values.</p></article><article><div class="source-number">02</div><h3>Mind the missing grades.</h3><p>UBC's reports suppress some small grade categories for privacy. We leave those blank rather than reverse-engineering suppressed student counts.</p></article><article><div class="source-number">03</div><h3>Historical ≠ predictive.</h3><p>Past grades vary by instructor, section and year. Use the results as context—not as a guaranteed grade or a complete difficulty score.</p></article></div>
+      <div class="coverage-explorer" aria-labelledby="coverage-heading">
+        <div class="coverage-toolbar"><div><h3 id="coverage-heading">Raw data coverage</h3><p>See which academic sessions have published grade averages. Empty averages remain unavailable.</p></div><label>Campus <select id="coverageCampus"><option value="UBCV">UBC Vancouver</option><option value="UBCO">UBC Okanagan</option></select></label></div>
+        <p id="coverageSummary" class="coverage-kpi" role="status">Checking local dataset…</p>
+        <div id="coverageTable" class="coverage-table-scroller"></div>
+        <p class="detail-copy">These counts are raw source rows, including aggregate OVERALL rows and repeated entries. They are <strong>not</strong> counts of unique classes or evidence that every course was offered. For each year-session, this table shows only the newest available source vintage.</p>
+      </div><div class="source-footer"><span>Primary sources: <a href="https://github.com/DonneyF/ubc-pair-grade-data" target="_blank" rel="noopener noreferrer">UBC PAIR grade data ↗</a> <a href="https://ubcgrades.com/api-reference" target="_blank" rel="noopener noreferrer">UBCGrades API ↗</a></span><span>Not affiliated with the University of British Columbia</span></div></section>
+  </main>
+  <footer class="site-footer"><div class="shell footer-inner"><div><strong>coursewise<span class="brand-period">.</span></strong><p>A little clarity for your next semester.</p></div><span>Independent project · Data from the UBC PAIR grade archive · <a href="https://github.com/DonneyF/ubcgrades" target="_blank" rel="noopener noreferrer">Original project ↗</a></span></div></footer>
+</body>
+</html>
