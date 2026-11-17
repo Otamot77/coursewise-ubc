@@ -116,3 +116,31 @@ test('instructor comparison analytics module is served without needing private d
   assert.equal(app.status, 200);
   assert.match(await app.text(), /renderInstructorComparison/);
 });
+
+test('Workday XLSX importer is locally served and wired into My Classes', async () => {
+  const importer=await fetch(`${root}/lib/workday-xlsx.mjs`);
+  assert.equal(importer.status,200);
+  assert.match(await importer.text(),/parseWorkdayXlsx/);
+  const page=await fetch(`${root}/my-classes`);
+  const html=await page.text();
+  assert.match(html,/\.xlsx/);
+  const app=await fetch(`${root}/assets/app.mjs`);
+  const body=await app.text();
+  assert.match(body,/await parseWorkdayXlsx\(file/);
+  assert.match(body,/Only course codes and sections were extracted/);
+});
+
+test('course reports use explicit SVG histograms and saved lineups show compact insights', async () => {
+  const charts=await fetch(`${root}/lib/charts.mjs`);
+  assert.equal(charts.status,200);
+  const code=await charts.text();
+  assert.match(code,/gradeDistributionSvg/);
+  assert.match(code,/rect class="distribution-svg-bar"/);
+  assert.match(code,/historyTrendSvg/);
+  assert.match(code,/compactTrendSvg/);
+  const app=await fetch(`${root}/assets/app.mjs`);
+  const body=await app.text();
+  assert.match(body,/function renderCourseOverview/);
+  assert.match(body,/lineup-highlights/);
+  assert.match(body,/More historical statistics/);
+});

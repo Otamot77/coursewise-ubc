@@ -1,7 +1,9 @@
 import { parseSchedule, normalizeSavedCourses, courseKey, courseLabel } from '../lib/schedule.mjs';
+import { parseWorkdayXlsx } from '../lib/workday-xlsx.mjs';
 import { normalizeProfile, fmtPercent, historyRange, recentChange, GRADE_BANDS, GPA_EQUIVALENCIES, gpaEquivalency, aggregateDistributions, validApiPath } from '../lib/grades.mjs';
 import { calculateGradePlan, chooseDistribution, DEFAULT_CREDITS, validCredits, validGrade } from '../lib/planner.mjs';
 import { compareInstructors, availableInstructorTerms } from '../lib/instructors.mjs';
+import { gradeDistributionSvg, historyTrendSvg, compactTrendSvg } from '../lib/charts.mjs';
 
 const $ = id => document.getElementById(id);
 const UBC_GPA_SOURCE = 'https://www.arts.ubc.ca/degree-planning/academic-performance/promotion-continuation-grading/';
@@ -119,9 +121,35 @@ let catalogRequest = 0;
 
 function renderHistory(profile) {
   if (!profile?.history?.length) return '<p class="notice-text">No published course-average history.</p>';
-  const data = profile.history.slice(-24);
-  return `<div class="history-chart" role="img" aria-label="Published course averages for ${escapeHTML(data[0].yearsession)} to ${escapeHTML(data.at(-1).yearsession)}">${data.map(p => `<span class="history-column" title="${escapeHTML(p.yearsession)}: ${fmtPercent(p.average)}" style="height:${Math.max(3, p.average)}%"></span>`).join('')}</div><div class="year-tags"><span>${escapeHTML(data[0].yearsession)}</span><span>${escapeHTML(data.at(-1).yearsession)}</span></div><p class="detail-copy">Term-level means are based on available sections; they are not individual grade distributions.</p>`;
+  return historyTrendSvg(profile.history, `Course means from ${profile.history[0].yearsession} to ${profile.history.at(-1).yearsession}`);
 }
+
+function latestTermSummary(profile) {
+  const latest = profile?.history?.at(-1);
+  const sessions = profile?.coverage?.sessionDetails || [];
+  const recorded = latest ? sessions.find(x => x.yearsession === latest.yearsession) : null;
+  return {latest, recorded};
+}
+
+function renderCourseOverview(profile) {
+  const {latest} = latestTermSummary(profile);
+  const historicalCount = profile?.history?.length ?? 0;
+  return `<div class="course-overview">
+    <section class="course-overview-averages" aria-label="Course average summary">
+      <div class="course-overview-eyebrow">COURSE AVERAGES</div>
+      <span class="overview-main-label">Recent five-year mean</span>
+      <strong class="overview-main-number">${fmtPercent(profile?.average5)}</strong>
+      <div class="overview-secondary-row"><span>All-time mean <b>${fmtPercent(profile?.average)}</b></span><span>Latest ${escapeHTML(latest?.yearsession || 'term')} <b>${fmtPercent(latest?.average)}</b></span></div>
+      <p class="overview-gpa"><a href="${UBC_GPA_SOURCE}" target="_blank" rel="noopener noreferrer">UBC 4.33 equivalent ↗</a> <strong>${fmtGpa(profile?.average5)}</strong><small>Conversion of the recent mean, not a class GPA</small></p>
+    </section>
+    <section class="course-overview-trend" aria-label="Historical course averages">
+      <div class="overview-trend-heading"><h3>Historical course averages</h3><span>${historicalCount} recorded term${historicalCount===1?'':'s'}</span></div>
+      ${renderHistory(profile)}
+      <p class="overview-trend-note">Published mean by academic session · Y-axis adapts to the observed range · Not a grade distribution</p>
+    </section>
+  </div>`;
+}
+
 
 function renderDistribution(profile, key) {
   const sections = profile?.recentSections ?? [];
@@ -136,18 +164,8 @@ function renderDistribution(profile, key) {
   const aggregate = aggregateDistributions(chosen);
   if (!aggregate) return '<p class="notice-text">No grade data for this selection.</p>';
   const single = chosen.length === 1 ? chosen[0] : null;
-  const max = Math.max(1, ...aggregate.bins.map(b => b.value ?? 0));
-  const options = sessionSections.map(x => `<option value="${escapeHTML(x.section)}" ${x.section === state.section ? 'selected' : ''}>${escapeHTML(x.section)}${x.educators.length ? ` · ${escapeHTML(x.educators[0])}` : ''}</option>`).join('');
-  const missing = aggregate.bins.some(b => b.incomplete);
-  const sizeNote = aggregate.partialSize ? ' (known subtotal; other sizes not reported)' : '';
-  const bins = aggregate.bins.map(b => {
-    const label = b.value == null ? 'N/A' : `${b.incomplete ? '≥' : ''}${fmtCount(b.value)}`;
-    const percent = b.value == null ? 0 : Math.round(b.value / max * 100);
-    const bar = b.value == null ? '<span class="grade-bar withheld" aria-hidden="true"></span>'
-      : `<span class="grade-bar ${b.incomplete ? 'partial' : ''}" style="height:${Math.max(0, percent)}%" aria-hidden="true"></span>`;
-    return `<div class="grade-chart-col" aria-label="${escapeHTML(b.range)}: ${escapeHTML(label)} students" title="${escapeHTML(b.range)} · ${escapeHTML(label)}">
-      <strong class="grade-chart-count">${escapeHTML(label)}</strong><div class="grade-chart-bar-wrap">${bar}</div><span class="grade-chart-band">${escapeHTML(b.key)}</span><small>${escapeHTML(b.label)}</small></div>`;
-  }).join('');
+  const bins = gradeDistributionSvg(aggregate.bins,
+    `Published grade-range counts for ${state.session}${state.section==='ALL' ? ', all available sections' : `, section ${state.section}`}`);
   const status = Object.entries(aggregate.statuses).filter(([k,v]) => v !== null)
     .map(([k,v]) => `<span class="status-count">${escapeHTML(k)} <strong>${fmtCount(v)}</strong></span>`).join('');
   const source = [...new Set(chosen.map(x => x.source || 'unknown'))].join(' / ');
@@ -157,12 +175,26 @@ function renderDistribution(profile, key) {
   const rowTable = `<div class="distribution-table"><table><thead><tr><th>Range</th><th>Letter</th><th>Reported count</th></tr></thead><tbody>${aggregate.bins.map(b => `<tr><td>${escapeHTML(b.range)}</td><td>${escapeHTML(b.label)}</td><td>${b.value == null ? 'Unavailable' : `${b.incomplete ? 'At least ' : ''}${fmtCount(b.value)}`}</td></tr>`).join('')}</tbody></table></div>`;
   return `<div class="distribution-panel" id="course-distribution" aria-label="Historical grade distribution">
     <div class="distribution-toolbar"><div><h4>Grade distribution</h4><span class="detail-copy">Actual published grade-band counts, not estimated grades</span></div><div class="distribution-filters"><label>Academic session<select data-filter-session="${escapeHTML(key)}">${sessions.map(s => `<option value="${escapeHTML(s)}" ${s===state.session?'selected':''}>${escapeHTML(s)}</option>`).join('')}</select></label><label>Section<select data-filter-section="${escapeHTML(key)}"><option value="ALL" ${state.section === 'ALL' ? 'selected' : ''}>All available sections</option>${options}</select></label></div></div>
-    <div class="section-stat-grid"><div><small>${single ? 'Section average' : 'Published term mean'}</small><strong>${fmtPercent(selectedAverage)}</strong><span>${single ? 'published section mean' : 'source session average; available sections only'}</span></div><div><small>${escapeHTML(aggregate.sizeLabel)}</small><strong>${fmtCount(aggregate.reported)}</strong><span>${aggregate.sections} record${aggregate.sections===1?'':'s'}${sizeNote}</span></div><div><small>Highest individual mark</small><strong>${fmtPercent(aggregate.high)}</strong></div><div><small>Lowest individual mark</small><strong>${fmtPercent(aggregate.low)}</strong></div><div><small>Median</small><strong>${fmtPercent(single?.median)}</strong><span>${single?.median != null ? 'reported section median' : 'Only shown for single sections'}</span></div><div><small>25th / 75th percentile</small><strong>${single?.p25 != null && single?.p75 != null ? `${fmtPercent(single.p25)} / ${fmtPercent(single.p75)}` : '—'}</strong></div><div><small>Standard deviation</small><strong>${single?.stdDev != null ? single.stdDev.toFixed(1) + ' pt' : '—'}</strong><span>available on individual sections</span></div><div><small>Pass rate (graded outcomes)</small><strong>${rate}</strong><span>${aggregate.passRate == null ? 'unavailable for this source' : 'pass / (pass + fail); withdrawals excluded'}</span></div></div>
+    <div class="distribution-key-metrics">
+      <div><span>${single ? 'Section average' : 'Published term average'}</span><strong>${fmtPercent(selectedAverage)}</strong></div>
+      <div><span>${escapeHTML(aggregate.sizeLabel)}</span><strong>${fmtCount(aggregate.reported)}</strong><small>${aggregate.sections} record${aggregate.sections===1?'':'s'}${sizeNote}</small></div>
+      ${single && single.median != null ? `<div><span>Section median</span><strong>${fmtPercent(single.median)}</strong></div>` : ''}
+    </div>
     <div class="distribution-chart-header"><span>Students by grade range</span><span>Published count${aggregate.fullyPublished ? 's' : 's; some withheld'}</span></div>
-    <div class="grade-chart" role="group" aria-label="Published grade counts by UBC percentage band for ${escapeHTML(state.session)}${state.section==='ALL'?'':` section ${escapeHTML(state.section)}`}">${bins}</div>
+    ${bins}
     <p class="chart-caption">Percentage ranges (left to right) · Each bar shows the published student count, not a percentage of the class. N/A means unavailable or withheld.</p>
     ${missing ? '<p class="data-warning">Some grade bins are blank or privacy-suppressed. A ≥ count is a lower bound from published sections only; a blank is not zero. We never reconstruct withheld counts.</p>' : `<p class="dist-complete">All eleven grade-band counts are present for the ${chosen.length === 1 ? 'selected section' : 'selected records'}.</p>`}
     <details class="distribution-breakdown"><summary>View exact grade-band counts</summary>${rowTable}</details>
+    <details class="distribution-breakdown"><summary>More section statistics · highs, lows, quartiles and pass rate</summary>
+      <div class="secondary-stat-grid">
+        <div><span>Highest individual mark</span><strong>${fmtPercent(aggregate.high)}</strong></div>
+        <div><span>Lowest individual mark</span><strong>${fmtPercent(aggregate.low)}</strong></div>
+        <div><span>25th / 75th percentile</span><strong>${single?.p25 != null && single?.p75 != null ? `${fmtPercent(single.p25)} / ${fmtPercent(single.p75)}` : '—'}</strong></div>
+        <div><span>Standard deviation</span><strong>${single?.stdDev != null ? single.stdDev.toFixed(1) + ' pt' : '—'}</strong></div>
+        <div><span>Pass rate (graded outcomes)</span><strong>${rate}</strong></div>
+      </div>
+      <p class="detail-copy">Median, quartiles and standard deviation are only shown for a single section when published. Pass rate is pass / (pass + fail), excluding withdrawals.</p>
+    </details>
     ${status ? `<div class="status-breakdown">Historical standing counts: ${status}</div>` : ''}
     <p class="detail-copy">Source: ${escapeHTML(source)}. ${aggregate.reported != null ? `Student count: ${escapeHTML(aggregate.sizeLabel.toLowerCase())}. ` : ''}${profile.coverage?.limitedSectionHistory ? 'The local index retains only the 120 newest section records; older semesters may be incomplete. ' : ''}${chosen.length > 1 ? 'Aggregated counts include only the available sections shown for this session; individual section summaries should be used for median and quartiles. ' : ''}Counts cover source grade categories, not a guaranteed current enrollment or an exact GPA distribution.</p>
   </div>`;
@@ -215,20 +247,59 @@ function renderInstructorComparison(profile, key) {
 }
 
 function renderCourse(c, standalone = false) {
-  const key = courseKey(c), profile = profiles.get(key), pending = loading.has(key), error = errors.get(key), open = standalone || expanded.has(key);
-  const status = error ? `<span class="status-dot amber"></span><span title="${escapeHTML(error)}">Historical source unavailable</span>` : pending ? '<span class="status-dot gray"></span>Loading historical data…' : profile?.average != null ? '<span class="status-dot"></span>Published historical averages available' : profile ? '<span class="status-dot amber"></span>No published averages found' : '<span class="status-dot gray"></span>No data loaded';
-  const latest = profile?.coverage?.latestPublished;
-  const newerVariants = (profile?.relatedCodes ?? []).filter(v => latest && v.latest > latest);
-  const coverageHint = latest ? `<span class="last-coverage"> · through ${escapeHTML(latest)}${newerVariants.length ? ` · newer ${escapeHTML(newerVariants.map(x => x.course).join('/'))} entries` : ''}</span>` : '';
-  const section = c.sections.length ? ` · Section${c.sections.length > 1 ? 's' : ''} ${escapeHTML(c.sections.join(', '))}` : '';
-  const teaching = profile?.teachingTeam?.length ? profile.teachingTeam.slice(0,8).map(p => `<span class="educator-chip">${escapeHTML(p.name)}</span>`).join('') : '<span class="notice-text">No teaching team listed.</span>';
-  const related = profile?.relatedCodes?.length ? `<div class="detail-heading">Related course codes</div><div class="variant-strip">${profile.relatedCodes.map(x => `<button type="button" class="variant-code" data-related="${escapeHTML(c.subject + ' ' + x.course)}">${escapeHTML(c.subject + ' ' + x.course)} · through ${escapeHTML(x.latest)}</button>`).join('')}</div><p class="detail-copy">Suffix codes are distinct registrations and are never silently merged.</p>` : '';
-  const sections = (profile?.recentSections ?? []).slice().sort((a,b) => (c.sections.includes(b.section)?1:0)-(c.sections.includes(a.section)?1:0) || b.yearsession.localeCompare(a.yearsession) || a.section.localeCompare(b.section)).slice(0,20);
-  const sectionTable = sections.length ? `<div class="section-evidence"><table><thead><tr><th>Session</th><th>Section</th><th>Avg</th><th>Students</th><th>High / Low</th><th>Educator(s)</th></tr></thead><tbody>${sections.map(x => `<tr><td>${escapeHTML(x.yearsession)}</td><td>${escapeHTML(x.section)}${c.sections.includes(x.section)?' ★':''}</td><td>${fmtPercent(x.average)}</td><td>${fmtCount(x.reported)}</td><td>${fmtPercent(x.high)} / ${fmtPercent(x.low)}</td><td>${escapeHTML(x.educators.join('; ')||'Not listed')}</td></tr>`).join('')}</tbody></table></div><p class="detail-copy">Historical section IDs don't identify today's teaching team. “Students” means Enrolled (older data) or Reported (newer data).</p>` : '<p class="notice-text">No historical section records in this source.</p>';
-  const partial = profile?.coverage?.partialYearsessions ?? 0;
-  const warnings = partial ? `<div class="data-warning">${partial} recorded term${partial===1?'':'s'} contain unpublished section averages. Term-level means use only published entries.</div>` : '';
-  const details = open ? `<div class="course-detail">${renderDistribution(profile,key)}${standalone ? renderInstructorComparison(profile,key) : ''}<details class="detail-collapse"><summary>Historical course averages by session · ${profile ? escapeHTML(historyRange(profile.history)) : 'No history'}</summary>${renderHistory(profile)}<p class="detail-copy">Coverage: ${profile ? escapeHTML(historyRange(profile.history)) : 'None'}${profile?.coverage?.latest ? ` · Latest archive term: ${escapeHTML(profile.coverage.latest)}` : ''}</p></details>${warnings}${related}<details class="detail-collapse"><summary>Historical sections (up to 20 shown)</summary>${sectionTable}</details><details class="detail-collapse"><summary>Recorded teaching team</summary><div class="educator-list">${teaching}</div></details><p class="detail-copy">Data source: ${escapeHTML(profile?.source?.stats || 'unavailable')}. ${profile?.coverage?.yearsessions ?? 0} terms with published averages. Missing grade bins are never inferred. <a href="${UBC_GPA_SOURCE}" target="_blank" rel="noopener noreferrer">UBC's published 4.33 equivalency ↗</a> is not a predicted personal mark.</p></div>` : '';
-  return `<article class="course-item ${standalone?'standalone-course':''}" data-key="${escapeHTML(key)}"><div class="course-head"><div class="course-logo">${escapeHTML(c.subject)}</div><div class="course-title-block"><strong>${escapeHTML(courseLabel(c))}</strong><small>${escapeHTML(profile?.title || 'Historical course overview')}${section}</small></div>${standalone ? `<button class="outline-btn add-explored" type="button" data-add-explored="${escapeHTML(key)}">Save to My Classes +</button>` : `<button class="remove-course" data-remove="${escapeHTML(key)}" type="button" aria-label="Remove ${escapeHTML(courseLabel(c))}">✕</button>`}</div><div class="course-middle extended"><div><span class="course-stat-label">Recent 5-year mean</span><span class="course-stat-value highlight">${pending?'···':fmtPercent(profile?.average5)}</span></div><div><span class="course-stat-label">All-time mean</span><span class="course-stat-value">${pending?'···':fmtPercent(profile?.average)}</span></div><div><span class="course-stat-label">Highest course mean</span><span class="course-stat-value">${fmtPercent(profile?.high)}</span></div><div><span class="course-stat-label">Lowest course mean</span><span class="course-stat-value">${fmtPercent(profile?.low)}</span></div><div><span class="course-stat-label"><a href="${UBC_GPA_SOURCE}" target="_blank" rel="noopener noreferrer" class="gpa-source-link">UBC 4.33 equivalent ↗</a> · recent mean</span><span class="course-stat-value">${fmtGpa(profile?.average5)}</span></div><div><span class="course-stat-label">Highest / lowest mark</span><span class="course-stat-value small-mark">${fmtPercent(profile?.highMark)} / ${fmtPercent(profile?.lowMark)}</span></div></div><div class="course-bottom"><div>${status}${coverageHint}</div><div>${standalone ? '' : `<label class="compare-label"><input type="checkbox" data-select="${escapeHTML(key)}" ${selected.has(key)?'checked':''} aria-label="Compare ${escapeHTML(courseLabel(c))}"/> Compare</label><a class="detail-toggle" href="${escapeHTML(courseUrl(c))}">View full report →</a>`}</div></div>${standalone && profile?.recentSections?.length ? '<nav class="course-quicklinks" aria-label="Course report sections"><a href="#course-distribution">Grade distribution ↓</a><a href="#instructor-comparison">Compare instructors ↓</a></nav>' : ''}${details}</article>`;
+  const key=courseKey(c), profile=profiles.get(key), pending=loading.has(key), error=errors.get(key);
+  const status=error ? `<span class="status-dot amber"></span><span title="${escapeHTML(error)}">Historical source unavailable</span>`
+    : pending ? '<span class="status-dot gray"></span>Loading grade history…'
+    : profile?.average != null ? '<span class="status-dot"></span>Published historical records'
+    : profile ? '<span class="status-dot amber"></span>Average not published for this code' : '<span class="status-dot gray"></span>Awaiting data';
+  const latest=profile?.coverage?.latestPublished;
+  const newerVariants=(profile?.relatedCodes??[]).filter(v=>latest && v.latest>latest);
+  const coverageHint=latest ? `<span class="last-coverage"> · through ${escapeHTML(latest)}${newerVariants.length ? ` · newer ${escapeHTML(newerVariants.map(x=>x.course).join('/'))} codes` : ''}</span>` : '';
+  const section=c.sections.length ? ` · Section${c.sections.length>1?'s':''} ${escapeHTML(c.sections.join(', '))}` : '';
+  const { latest: last, recorded }=latestTermSummary(profile);
+
+  if (!standalone) {
+    const recentSections=profile?.recentSections ?? [];
+    const lastSections=last ? recentSections.filter(r=>r.yearsession===last.yearsession && r.section!=='OVERALL') : [];
+    const availableSections=lastSections.length ? lastSections : last ? recentSections.filter(r=>r.yearsession===last.yearsession) : [];
+    const dist=availableSections.length ? aggregateDistributions(availableSections) : null;
+    const mostCommon=(dist?.fullyPublished && dist.publishedCount>0)
+      ? dist.bins.reduce((best,bin)=>!best||bin.value>best.value?bin:best,null) : null;
+    return `<article class="lineup-course" data-key="${escapeHTML(key)}">
+      <div class="lineup-heading"><div class="course-logo">${escapeHTML(c.subject)}</div><div class="course-title-block"><strong>${escapeHTML(courseLabel(c))}</strong><small>${escapeHTML(profile?.title||'Historical course overview')}${section}</small></div><button class="remove-course" data-remove="${escapeHTML(key)}" type="button" aria-label="Remove ${escapeHTML(courseLabel(c))}">✕</button></div>
+      <div class="lineup-highlights">
+        <div class="lineup-highlight-primary"><span>Recent 5-year mean</span><strong>${pending?'···':fmtPercent(profile?.average5)}</strong></div>
+        <div><span>Latest term${last?` · ${escapeHTML(last.yearsession)}`:''}</span><strong>${fmtPercent(last?.average)}</strong></div>
+        <div><span>All-time mean</span><strong>${fmtPercent(profile?.average)}</strong></div>
+        <div class="lineup-graph"><span>Historical trend</span>${compactTrendSvg(profile?.history)}<small>${escapeHTML(profile?.history?.length||0)} published terms</small></div>
+      </div>
+      <div class="lineup-detail-strip"><span>${recorded?.reported != null ? `${fmtCount(recorded.reported)} reported/enrolled students in latest term` : 'Latest term class size unavailable'}</span><span>${mostCommon ? `Most common published band: ${escapeHTML(mostCommon.key)} (${fmtCount(mostCommon.value)})` : 'Grade-band summary unavailable or partly withheld'}</span></div>
+      <div class="lineup-footer"><div>${status}${coverageHint}</div><div class="lineup-actions"><label class="compare-label"><input type="checkbox" data-select="${escapeHTML(key)}" ${selected.has(key)?'checked':''} aria-label="Compare ${escapeHTML(courseLabel(c))}"/> Compare</label><a class="detail-toggle" href="${escapeHTML(courseUrl(c))}">Full report →</a></div></div>
+    </article>`;
+  }
+
+  const teaching=profile?.teachingTeam?.length ? profile.teachingTeam.slice(0,8).map(p=>`<span class="educator-chip">${escapeHTML(p.name)}</span>`).join('') : '<span class="notice-text">No teaching team listed.</span>';
+  const related=profile?.relatedCodes?.length ? `<div class="detail-heading">Related course codes</div><div class="variant-strip">${profile.relatedCodes.map(x=>`<button type="button" class="variant-code" data-related="${escapeHTML(c.subject+' '+x.course)}">${escapeHTML(c.subject+' '+x.course)} · through ${escapeHTML(x.latest)}</button>`).join('')}</div><p class="detail-copy">Suffix course codes are distinct registrations.</p>` : '';
+  const sections=(profile?.recentSections ?? []).slice().sort((a,b)=>b.yearsession.localeCompare(a.yearsession)||a.section.localeCompare(b.section)).slice(0,20);
+  const sectionTable=sections.length ? `<div class="section-evidence"><table><thead><tr><th>Session</th><th>Section</th><th>Mean</th><th>Students</th><th>High / low</th><th>Educator(s)</th></tr></thead><tbody>${sections.map(x=>`<tr><td>${escapeHTML(x.yearsession)}</td><td>${escapeHTML(x.section)}</td><td>${fmtPercent(x.average)}</td><td>${fmtCount(x.reported)}</td><td>${fmtPercent(x.high)} / ${fmtPercent(x.low)}</td><td>${escapeHTML(x.educators.join('; ')||'Not listed')}</td></tr>`).join('')}</tbody></table></div>` : '<p class="notice-text">No historical section records available.</p>';
+  const partial=profile?.coverage?.partialYearsessions??0;
+  const warnings=partial ? `<div class="data-warning">${partial} recorded term${partial===1?'':'s'} contain unpublished section averages; term means use only available entries.</div>` : '';
+  const details=`<div class="course-detail">
+    ${renderDistribution(profile,key)}
+    ${renderInstructorComparison(profile,key)}
+    <details class="detail-collapse" id="more-historical-stats"><summary>More historical statistics · highest and lowest course averages</summary><div class="secondary-stat-grid"><div><span>Highest published course-term mean</span><strong>${fmtPercent(profile?.high)}</strong></div><div><span>Lowest published course-term mean</span><strong>${fmtPercent(profile?.low)}</strong></div><div><span>Highest recorded individual mark</span><strong>${fmtPercent(profile?.highMark)}</strong></div><div><span>Lowest recorded individual mark</span><strong>${fmtPercent(profile?.lowMark)}</strong></div></div></details>
+    ${warnings}${related}
+    <details class="detail-collapse"><summary>Historical sections (up to 20 shown)</summary>${sectionTable}<p class="detail-copy">Historical section identifiers and teaching assignments may differ today.</p></details>
+    <details class="detail-collapse"><summary>Recorded teaching team</summary><div class="educator-list">${teaching}</div></details>
+    <p class="detail-copy">Data source: ${escapeHTML(profile?.source?.stats||'unavailable')}. ${profile?.coverage?.yearsessions??0} terms with published averages. Suppressed grade bins are never estimated. <a href="${UBC_GPA_SOURCE}" target="_blank" rel="noopener noreferrer">UBC 4.33 conversion source ↗</a>.</p>
+  </div>`;
+  return `<article class="course-item standalone-course" data-key="${escapeHTML(key)}">
+    <div class="course-head"><div class="course-logo">${escapeHTML(c.subject)}</div><div class="course-title-block"><strong>${escapeHTML(courseLabel(c))}</strong><small>${escapeHTML(profile?.title||'Historical course overview')}${section}</small></div><button class="outline-btn add-explored" type="button" data-add-explored="${escapeHTML(key)}">Save to My Classes +</button></div>
+    <div class="course-data-availability">${status}${coverageHint}</div>
+    ${renderCourseOverview(profile)}
+    ${profile?.recentSections?.length ? '<nav class="course-quicklinks" aria-label="Course report sections"><a href="#course-distribution">Grade distribution ↓</a><a href="#instructor-comparison">Compare instructors ↓</a></nav>' : ''}
+    ${details}
+  </article>`;
 }
 
 function renderComparison() {
@@ -255,12 +326,31 @@ $('importButton').addEventListener('click', () => {
 $('scheduleFile').addEventListener('change', async e => {
   const file = e.target.files?.[0];
   if (!file) return;
-  if (!/\.(txt|csv|ics|html?)$/i.test(file.name)) { message('Please upload a .txt, .csv, .html or .ics file.', true); return; }
-  if (file.size > 100_000) { message('File too large. Please choose a file under 100 KB.', true); return; }
-  $('fileName').textContent = file.name;
-  $('scheduleInput').value = await file.text();
-  message('File read locally. Select “Find my courses” to import.');
   e.target.value = '';
+  $('fileName').textContent = file.name;
+  try {
+    if (/\.xlsx$/i.test(file.name)) {
+      // Parse locally: never upload a Workday spreadsheet or retain personal columns.
+      const parsed = await parseWorkdayXlsx(file, $('campusSelect').value);
+      if (!parsed.length) {
+        message('No UBC course codes were found in this Excel export. Confirm it includes course identifiers such as CPSC_V 110 or MATH 100, or paste the course list instead.', true);
+        return;
+      }
+      const display = parsed.flatMap(c => c.sections.length
+        ? c.sections.map(section => `${c.subject}_${c.campus === 'UBCO' ? 'O' : 'V'} ${c.course} - ${section}`)
+        : [`${c.subject}_${c.campus === 'UBCO' ? 'O' : 'V'} ${c.course}`]);
+      $('scheduleInput').value = display.join('\n');
+      message(`Found ${parsed.length} course${parsed.length === 1 ? '' : 's'} in your Excel workbook. Review the codes above, then click “Find my courses”. Only course codes and sections were extracted.`);
+      return;
+    }
+    if (!/\.(txt|csv|ics|html?)$/i.test(file.name)) throw new Error('Please choose a .xlsx, .txt, .csv, .ics or .html file.');
+    if (file.size > 100_000) throw new Error('Text exports must be under 100 KB.');
+    $('scheduleInput').value = await file.text();
+    message('File read locally. Select “Find my courses” to import.');
+  } catch (error) {
+    $('scheduleInput').value = '';
+    message(error?.message || 'Could not read this Excel export. Please try again or paste the courses.', true);
+  }
 });
 $('manualForm').addEventListener('submit', e => {
   e.preventDefault();
