@@ -4,6 +4,12 @@
 
 Website source: [Otamot77/coursewise-ubc](https://github.com/Otamot77/coursewise-ubc). **Not affiliated with UBC.** Inspired by the MIT-licensed [UBCGrades](https://ubcgrades.com). The underlying grade records originally came from UBC and were preserved in [DonneyF/ubc-pair-grade-data](https://github.com/DonneyF/ubc-pair-grade-data). The MIT license covers **Coursewise code only**, not the upstream data archive.
 
+## Changes in v1.0.1 — valid course search and local Wi-Fi access
+
+**Search stays on the homepage when a code is not found.** A valid-looking string such as `FFFF222` must first match an exact campus/course entry in the imported historical catalog. A miss shows an inline **Course not found** message and, when available, clickable **Did you mean…?** suggestions based on near course codes or course titles. The lookup never fabricates a course report. Deep links to missing courses show a not-found message instead of an empty report. A code archived only at the other UBC campus may be suggested with its campus clearly labeled.
+
+**Wi-Fi hosting is opt-in.** Use `npm run lan` instead of `npm start` to listen on all local interfaces and print this computer's LAN URL. Other devices on the **same Wi-Fi/private network** can open it in their browser. `npm start` remains restricted to the local computer. No accounts, external hosting, or port forwarding are needed. Each device's saved courses and lineups are **independent** because they use browser-local storage.
+
 ## What's in v1.0.0
 
 | Area | What you can do |
@@ -23,14 +29,26 @@ Website source: [Otamot77/coursewise-ubc](https://github.com/Otamot77/coursewise
 
 ### Ready-to-run ZIP on Windows
 
-If you have **`coursewise-ubc-v1.0.0-with-data.zip`**, extract it to your Downloads folder, then run:
+If you have **`coursewise-ubc-v1.0.1-with-data.zip`**, extract it to your Downloads folder, then run:
 
 ```powershell
-cd "$HOME\Downloads\coursewise-ubc-v1.0.0-with-data\coursewise-ubc"
+cd "$HOME\Downloads\coursewise-ubc-v1.0.1-with-data\coursewise-ubc"
 npm start
 ```
 
 Open <http://localhost:4173>. Stop an older running Coursewise server with `Ctrl+C` first. The with-data ZIP already includes the index; **do not reimport it**.
+
+### Open Coursewise on your phone or another device (same Wi-Fi)
+
+While your laptop or desktop is connected to your trusted home or campus network, from the extracted `coursewise-ubc` folder run:
+
+```powershell
+npm run lan
+```
+
+You will see a line like `On the same Wi-Fi: http://192.168.1.23:4173` — **use the IP address printed on your computer**, not this example. Open that URL in Safari/Chrome on your phone or another computer connected to the same network. Keep the PowerShell window running while you use the site. `Ctrl+C` stops hosting.
+
+If it does not connect: confirm both devices are on the same private network, allow **Node.js on Private networks only** if Windows Firewall prompts, and check that your Wi-Fi/router isn't isolating devices (common on guest/public/campus Wi-Fi). Your laptop's IP address can change when you reconnect. This is development/LAN hosting, not a public internet deployment: **do not port-forward port 4173**. Workday spreadsheets are parsed in the accessing browser, and personal lineups are stored separately in each browser, not shared across your devices.
 
 ### Source-only GitHub checkout
 
@@ -47,7 +65,7 @@ The local importer generates the ignored files:
 - `data/coverage.json` — published coverage by campus and academic session
 - `data/metadata.json` — source and import metadata
 
-**Source-only limitation:** Without the locally imported grade dataset, individual course lookups can use the UBCGrades API fallback, but Browse, grade-band statistics, Passport rates, and the local coverage browser require the dataset. The GitHub repository **intentionally does not distribute the raw or derived grade archive** pending separate confirmation of redistribution permission. Do not commit raw schedules, student data or the original workbook.
+**Source-only limitation:** Without the locally imported grade dataset, the homepage cannot verify exact course existence or suggest historical catalog matches. Individual manually opened course URLs can still use the UBCGrades API fallback, but Browse, grade-band statistics, Passport rates, and the local coverage browser require the dataset. The GitHub repository **intentionally does not distribute the raw or derived grade archive** pending separate confirmation of redistribution permission. Do not commit raw schedules, student data or the original workbook.
 
 ## Grade Difficulty Passport: statistical interpretation
 
@@ -77,7 +95,7 @@ Some large courses retain only the **newest 120 section rows** in the generated 
 
 - Original grades: published UBC PAIR reports and institutional Tableau grade-distribution dashboards. See UBC's [Grade Distribution Report](https://cio.ubc.ca/grade-distribution-report), which can require institutional access.
 - Local historical archive: [DonneyF's community-maintained UBC PAIR archive](https://github.com/DonneyF/ubc-pair-grade-data). The current imported source contains **13,162 CSV files**, **489,852 rows**, and **21,280 normalized campus/course-code entries**, with **2025W** the latest represented session. The archive is **not** a live feed from UBC.
-- Missing local courses may fall back to the [UBCGrades API](https://ubcgrades.com/api-reference). The API fallback does not necessarily provide comparable section-grade distributions.
+- When the local index is absent, directly opened course URLs can fall back to the [UBCGrades API](https://ubcgrades.com/api-reference). With the local index installed, unknown course codes return **not found** instead of an empty report. The historical archive does not represent every currently offered UBC course.
 
 Privacy-suppressed grade bins stay missing, never zero or reconstructed. Student counts can mean *enrolled* in one historical vintage and *reported outcomes* in another. A historical aggregate might include only retained published sections. UBC's published course averages and grade distributions are descriptive statistics, not standardized course difficulty scores. A percentage-level 4.33 lookup is not a student's calculated GPA. Actual course and instructor availability, schedules and credit values must be checked through UBC systems.
 
@@ -89,6 +107,7 @@ Privacy-suppressed grade bins stay missing, never zero or reconstructed. Student
 | `/api/catalog?campus=UBCV&subjectPrefix=CP&level=200&page=1` | Catalog search and pagination (nine items/page) |
 | `/api/catalog?campus=UBCV&min85=20&recentComplete=1&sort=attain85` | Filter by complete-band 85%+ rate, recent complete session and sort by attainment |
 | `/api/catalog?campus=UBCV&maxRange=10&sort=consistent` | Filter/sort by course-term mean range in last five represented academic years |
+| `/api/course-search?campus=UBCV&q=CPSC%20110` | Validate exact campus/course existence; return up to five conservative typo suggestions |
 | `/api/course?campus=UBCV&subject=CPEN&course=211` | Local course profile, section records, grade bands, history and source metadata |
 | `/api/coverage` | Campus/session coverage from the local imported archive |
 

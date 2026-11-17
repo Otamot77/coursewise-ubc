@@ -1,11 +1,12 @@
 {
   "name": "coursewise-ubc",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "type": "module",
   "description": "A privacy-first UBC course insights and schedule companion",
   "scripts": {
     "start": "node server.mjs",
+    "lan": "node scripts/lan-server.mjs",
     "dev": "node --watch server.mjs",
     "test": "node --test",
     "test:data": "python3 -m unittest discover -s tests -p \"test_*.py\" -v"

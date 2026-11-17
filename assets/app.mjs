@@ -160,6 +160,8 @@ const fmtGpa = percent => {
 const distSelections = new Map();
 const instructorSelections = new Map();
 let detailedCourse = null;
+let dedicatedNotFound = false;
+let dedicatedSuggestions = [];
 let catalogPage = 1;
 let catalogLast = null;
 let catalogDelay = null;
@@ -726,6 +728,10 @@ $('coverageCampus').addEventListener('change',renderCoverage);
 if (page === 'data') fetch('/api/coverage').then(async r => { if(!r.ok) throw new Error('No local dataset has been imported.'); return r.json(); }).then(data=>{coverage=data;renderCoverage();}).catch(err=>{ $('coverageSummary').textContent = `${err.message} Import the raw ZIP to see data coverage.`; });
 
 // The catalog is a real search over the locally indexed archive (not a four-tile shortlist).
+function courseSuggestionLinks(suggestions) {
+  if(!suggestions?.length)return '';
+  return `<div class="course-suggestion-heading">Did you mean one of these?</div><div class="course-suggestions">${suggestions.map(c=>`<a class="course-suggestion" href="${escapeHTML(courseUrl(c))}"><strong>${escapeHTML(courseLabel(c))}</strong><small>${escapeHTML(c.campus==='UBCO'?'UBC Okanagan':'UBC Vancouver')} · ${escapeHTML(c.title||'View course report')}</small></a>`).join('')}</div>`;
+}
 async function fetchDedicated(c) {
   const key = courseKey(c);
   if (profiles.has(key) || loading.has(key)) return;
@@ -735,17 +741,34 @@ async function fetchDedicated(c) {
     const query = new URLSearchParams({ campus: c.campus, subject: c.subject, course: c.course });
     const response = await fetch(`/api/course?${query}`);
     const body = await response.json();
-    if (!response.ok) throw new Error(body.error || `HTTP ${response.status}`);
+    if(!response.ok){
+      if(response.status===404){
+        dedicatedNotFound=true;
+        try{
+          const suggest=await fetch(`/api/course-search?${new URLSearchParams({campus:c.campus,q:`${c.subject} ${c.course}`})}`);
+          if(suggest.ok)dedicatedSuggestions=(await suggest.json()).suggestions||[];
+        }catch{/* Suggestions are optional; the not-found state still works. */}
+      }
+      throw new Error(body.error || `HTTP ${response.status}`);
+    }
     profiles.set(key, normalizeProfile(body));
     errors.delete(key);
+    dedicatedNotFound=false;
   } catch (err) { errors.set(key, err.message); }
   finally { loading.delete(key); renderDedicated(); }
 }
 function renderDedicated() {
   if (page !== 'course' || !detailedCourse) return;
   const key = courseKey(detailedCourse), error = errors.get(key);
-  $('courseViewStatus').hidden = !loading.has(key) && !error;
-  $('courseViewStatus').textContent = error ? `Could not load historical data: ${error}` : 'Loading historical grades…';
+  const profile=profiles.get(key);
+  if(!profile){
+    $('courseViewStatus').hidden = Boolean(error);
+    $('courseViewStatus').textContent = 'Loading historical grades…';
+    $('courseView').innerHTML = error ? `<div class="course-not-found" role="status"><span class="section-index">${dedicatedNotFound?'NO COURSE MATCH':'REPORT UNAVAILABLE'}</span><h2>${dedicatedNotFound?'Course not found':'Could not load this course'}</h2><p>${dedicatedNotFound?`${escapeHTML(courseLabel(detailedCourse))} isn't in the available historical course catalog. Check the course code and campus.`:escapeHTML(error)}</p>${dedicatedNotFound?courseSuggestionLinks(dedicatedSuggestions):''}<a class="outline-btn" href="/">Search another course →</a></div>` : '';
+    document.title = `${courseLabel(detailedCourse)} · Coursewise`;
+    return;
+  }
+  $('courseViewStatus').hidden = true;
   $('courseView').innerHTML = renderCourse(detailedCourse, true);
   if (window.location.hash === '#instructor-report') {
     const report = $('courseView').querySelector('#instructor-report');
@@ -892,16 +915,40 @@ if (page === 'course') {
     $('courseViewStatus').textContent = 'Invalid or missing course code. Search a course to view its report.';
   }
 }
-$('homeForm').addEventListener('submit', event => {
+let homeSearchRequest=0;
+for(const id of ['homeCode','homeCampus'])$(id).addEventListener(id==='homeCode'?'input':'change',()=>{
+  homeSearchRequest++;
+  $('homeMessage').innerHTML='';
+  $('homeMessage').classList.remove('error');
+});
+$('homeForm').addEventListener('submit', async event => {
   event.preventDefault();
-  const text = $('homeCode').value.trim();
-  const campus = $('homeCampus').value;
-  const parsed = parseSchedule(text, campus);
-  if (parsed.length === 1 && validApiPath(parsed[0].campus,parsed[0].subject,parsed[0].course)) {
-    window.location.assign(courseUrl(parsed[0]));
-  } else if (text) {
-    window.location.assign(`/explore?${new URLSearchParams({q:text})}`);
-  } else $('homeMessage').textContent='Enter a course code, such as CPSC 110.';
+  const raw=$('homeCode').value.trim();
+  const campus=$('homeCampus').value;
+  const request=++homeSearchRequest;
+  const status=$('homeMessage');
+  status.classList.remove('error');
+  if(!raw){status.textContent='Enter a course code, such as CPSC 110.';return;}
+  const button=$('homeForm').querySelector('button[type="submit"]');
+  if(button)button.disabled=true;
+  status.textContent='Checking the historical course catalog…';
+  try{
+    const response=await fetch(`/api/course-search?${new URLSearchParams({campus,q:raw})}`);
+    const result=await response.json();
+    if(request!==homeSearchRequest)return;
+    if(!response.ok)throw new Error(result.error||'Course lookup is unavailable.');
+    if(result.found && result.course){
+      window.location.assign(courseUrl(result.course));
+    }else{
+      const campusName=campus==='UBCO'?'Okanagan':'Vancouver';
+      status.classList.add('error');
+      status.innerHTML=`<strong>Course not found in UBC ${campusName}'s historical data.</strong><p>${result.suggestions?.length?'Check the code, or choose a suggested course.':'Check the spelling or try browsing the full course catalog.'}</p>${courseSuggestionLinks(result.suggestions)}<a class="course-browse-link" href="/explore">Browse all courses →</a>`;
+    }
+  }catch(err){
+    if(request!==homeSearchRequest)return;
+    status.classList.add('error');
+    status.textContent=err.message||'Unable to check the course catalog right now.';
+  }finally{if(button)button.disabled=false;}
 });
 
 // Grade Goal Planner: only public course/section distributions are requested

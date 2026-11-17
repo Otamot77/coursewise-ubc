@@ -52,6 +52,14 @@ def mount(browser, page_name,initial_storage=None, query=''):
       window.history.replaceState=()=>{};
       window.fetch=async(input)=>{
         const u=new URL(String(input),'http://coursewise.test');
+        if(u.pathname==='/api/course-search'){
+          const q=(u.searchParams.get('q')||'').trim().toUpperCase();
+          const campus=u.searchParams.get('campus')||'UBCV';
+          const exact=Object.keys(fixture).find(key=>key===`${campus}:${q.replace(/\s+/,':')}`);
+          const row=exact?(()=>{const [campus,subject,course]=exact.split(':');return {campus,subject,course,title:fixture[exact].stats?.course_title||''};})():null;
+          const suggestions=q==='FFFF222'||q==='FFFF 222'?[]:[{campus:'UBCV',subject:'MATH',course:'100',title:'Differential Calculus'}];
+          return new Response(JSON.stringify({found:!!row,course:row,suggestions:row?[]:suggestions}),{status:200,headers:{'content-type':'application/json'}});
+        }
         if(u.pathname==='/api/course'){
           const key=[u.searchParams.get('campus'),u.searchParams.get('subject'),u.searchParams.get('course')].join(':');
           const payload=fixture[key];
@@ -84,6 +92,25 @@ def main():
             {'campus':'UBCV','subject':'CPEN','course':'211','sections':['101']},
             {'campus':'UBCV','subject':'CPSC','course':'110','sections':['101']}
         ])}
+        page,errors=mount(browser,'home')
+        page.locator('#homeCode').fill('FFFF222')
+        page.locator('#homeForm button[type="submit"]').click()
+        page.locator('#homeMessage').get_by_text('Course not found',exact=False).wait_for(timeout=15000)
+        assert page.locator('.home-search').count()==1, 'Invalid search left the homepage'
+        assert page.locator('#courseView').is_hidden(), 'An invalid search opened a fake course page'
+        page.locator('#homeCode').fill('MTAH 100')
+        page.locator('#homeForm button[type="submit"]').click()
+        page.locator('#homeMessage').get_by_text('Did you mean',exact=False).wait_for(timeout=15000)
+        assert page.locator('#homeMessage').get_by_text('MATH 100').count()==1
+        assert not errors,errors
+        print('HOME SEARCH: invalid codes stay inline; typo suggestions are clickable')
+        page.close()
+        page,errors=mount(browser,'course',{},'?campus=UBCV&subject=FFFF&course=222')
+        page.locator('.course-not-found').wait_for(timeout=15000)
+        assert page.locator('.grade-distribution-svg').count()==0
+        assert not errors,errors
+        print('DIRECT URL: invalid course shows a proper not-found state without a fabricated report')
+        page.close()
         page,errors=mount(browser,'classes',storage)
         page.locator('.lineup-course').first.wait_for(timeout=15000)
         page.locator('.lineup-course').filter(has_text='CPEN 211').locator('.lineup-highlight-primary strong').wait_for(timeout=15000)

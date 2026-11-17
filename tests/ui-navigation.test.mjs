@@ -41,7 +41,7 @@ class MockElement {
 }
 let sequence=0;
 const storage=new Map();
-async function mount(path, search='') {
+async function mount(path, search='', missing=false) {
   const nodes=new Map();
   globalThis.document={
     getElementById(id){if(!nodes.has(id))nodes.set(id,new MockElement(id));return nodes.get(id);},
@@ -53,7 +53,8 @@ async function mount(path, search='') {
   const calls=[];
   globalThis.fetch=async (url)=>{
     calls.push(url);
-    if(String(url).startsWith('/api/course?')) return new Response(JSON.stringify(fixture),{status:200,headers:{'content-type':'application/json'}});
+    if(String(url).startsWith('/api/course?')) return new Response(JSON.stringify(missing?{error:'Course not found in the local grade archive.'}:fixture),{status:missing?404:200,headers:{'content-type':'application/json'}});
+    if(String(url).startsWith('/api/course-search?')) return new Response(JSON.stringify({found:false,course:null,suggestions:[{campus:'UBCV',subject:'MATH',course:'100',title:'Differential Calculus'}]}),{status:200,headers:{'content-type':'application/json'}});
     return new Response(JSON.stringify({error:'Unexpected URL'}),{status:404,headers:{'content-type':'application/json'}});
   };
   await import(`../assets/app.mjs?ui-test=${++sequence}`);
@@ -192,4 +193,41 @@ test('comparison table shows median/quartiles/high-low and recalculates the perc
   state.get('compareTargetGrade').value='82';
   state.get('compareTargetGrade').listeners.get('input')();
   assert.match(state.get('comparisonTable').innerHTML,/Standing at 82%/);
+});
+
+
+test('homepage keeps unrecognized course codes inline and only navigates on exact catalog match',async()=>{
+  storage.clear();
+  const state=await mount('/');
+  const navigated=[];
+  globalThis.window.location.assign=url=>navigated.push(url);
+  let valid=false;
+  globalThis.fetch=async url=>{
+    const target=new URL(url,'http://test.local');
+    const q=target.searchParams.get('q');
+    valid=q==='CPSC 110';
+    return new Response(JSON.stringify(valid?
+      {found:true,course:{campus:'UBCV',subject:'CPSC',course:'110',title:'Computing'},suggestions:[]}:
+      {found:false,course:null,suggestions:[{campus:'UBCV',subject:'MATH',course:'100',title:'Differential Calculus'}]}),
+      {status:200,headers:{'content-type':'application/json'}});
+  };
+  state.get('homeCode').value='FFFF222';
+  await state.get('homeForm').listeners.get('submit')({preventDefault(){}});
+  assert.equal(navigated.length,0,'Invalid course should never navigate');
+  assert.match(state.get('homeMessage').innerHTML,/Course not found/);
+  assert.match(state.get('homeMessage').innerHTML,/Did you mean/);
+  assert.match(state.get('homeMessage').innerHTML,/MATH 100/);
+  state.get('homeCode').value='CPSC 110';
+  await state.get('homeForm').listeners.get('submit')({preventDefault(){}});
+  assert.deepEqual(navigated,['/course?campus=UBCV&subject=CPSC&course=110']);
+});
+
+test('invalid direct course URLs display a not-found state, not a fabricated course report',async()=>{
+  const state=await mount('/course','?campus=UBCV&subject=FFFF&course=222',true);
+  for(let i=0;i<30&&!state.get('courseView').innerHTML.includes('Course not found');i++)await new Promise(r=>setTimeout(r,2));
+  const html=state.get('courseView').innerHTML;
+  assert.match(html,/Course not found/);
+  assert.match(html,/Search another course/);
+  assert.doesNotMatch(html,/GRADE DIFFICULTY PASSPORT/);
+  assert.doesNotMatch(html,/grade-distribution-svg/);
 });

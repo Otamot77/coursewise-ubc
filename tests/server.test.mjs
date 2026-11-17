@@ -218,3 +218,35 @@ test('My Classes serves lineup and swap controls; course reports serve the Passp
   assert.equal(options.status,200);
   assert.match(await options.text(),/swapCourse/);
 });
+
+
+test('homepage search validates catalog membership and suggests real near matches', async () => {
+  const invalid = await fetch(`${root}/api/course-search?campus=UBCV&q=FFFF222`);
+  if(invalid.status===503){
+    assert.match((await invalid.json()).error,/complete local grade archive/);
+    return;
+  }
+  assert.equal(invalid.status,200);
+  const result=await invalid.json();
+  assert.equal(result.found,false);
+  assert.equal(result.course,null);
+  assert.ok(result.suggestions.every(x=>x.campus==='UBCV'&&x.subject!=='FFFF'));
+  const exact=await fetch(`${root}/api/course-search?campus=UBCV&q=CPEN%20221A`);
+  const matched=await exact.json();
+  assert.equal(matched.found,true);
+  assert.equal(matched.course.course,'221A');
+  const typo=await fetch(`${root}/api/course-search?campus=UBCV&q=MTAH%20100`);
+  const suggested=await typo.json();
+  assert.equal(suggested.found,false);
+  assert.ok(suggested.suggestions.some(x=>x.subject==='MATH'&&x.course==='100'));
+  const fabricated=await fetch(`${root}/api/course?campus=UBCV&subject=FFFF&course=222`);
+  assert.equal(fabricated.status,404);
+  assert.match((await fabricated.json()).error,/not found/i);
+});
+
+test('course search rejects oversized and invalid campus inputs',async()=>{
+  const invalid=await fetch(`${root}/api/course-search?campus=INVALID&q=CPSC%20110`);
+  assert.equal(invalid.status,400);
+  const long=await fetch(`${root}/api/course-search?q=${'A'.repeat(81)}`);
+  assert.equal(long.status,400);
+});

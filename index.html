@@ -31,7 +31,7 @@
 <select aria-label="Campus" id="homeCampus"><option value="UBCV">Vancouver</option><option value="UBCO">Okanagan</option></select>
 <button class="btn-solid" type="submit">Search course →</button>
 </form>
-<p class="feedback" id="homeMessage" role="status"></p>
+<div class="feedback home-search-feedback" id="homeMessage" role="status" aria-live="polite"></div>
 <div class="popular-searches"><span>Try:</span> <a href="/course?campus=UBCV&amp;subject=CPEN&amp;course=221A">CPEN 221A</a> <a href="/course?campus=UBCV&amp;subject=CPSC&amp;course=110">CPSC 110</a> <a href="/course?campus=UBCV&amp;subject=MATH&amp;course=100">MATH 100</a></div>
 <div class="home-next"><div><strong>Looking at your whole semester?</strong><p>Paste your Workday saved or registered schedule to review several courses at once.</p></div><a class="outline-btn" href="/my-classes">Go to My Classes →</a></div>
 <div class="trust-line"><span>◈ Actual published grade counts</span><span>◈ UBC Vancouver + Okanagan</span><span>◈ Missing values clearly labeled</span></div>

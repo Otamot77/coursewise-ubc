@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { validApiPath } from './lib/grades.mjs';
 import { chooseDistribution } from './lib/planner.mjs';
+import { findCourseMatches } from './lib/course-search.mjs';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 4173);
@@ -126,6 +127,13 @@ const server = http.createServer(async (req, res) => {
   if (!['GET', 'HEAD'].includes(req.method)) return sendJSON(res, 405, { error: 'Method not allowed' });
   let url;
   try { url = new URL(req.url, `http://${HOST}:${PORT}`); } catch { return sendJSON(res, 400, { error: 'Invalid URL' }); }
+  if (url.pathname === '/api/course-search') {
+    const campus=url.searchParams.get('campus')||'UBCV';
+    const q=url.searchParams.get('q')||'';
+    if(!/^(UBCV|UBCO)$/.test(campus)||q.length>80)return sendJSON(res,400,{error:'Invalid course search.'});
+    if(!localIndex)return sendJSON(res,503,{error:'Course search requires the complete local grade archive. Download the with-data version or import the source dataset.'});
+    return sendJSON(res,200,findCourseMatches(catalog,campus,q));
+  }
   if (url.pathname === '/api/course') {
     const campus = url.searchParams.get('campus') || '';
     const subject = url.searchParams.get('subject') || '';
@@ -137,9 +145,12 @@ const server = http.createServer(async (req, res) => {
       if (localProfile) return sendJSON(res, 200, { ...localProfile,
         sources: { stats: 'local PAIR CSV', history: 'local PAIR CSV', teachingTeam: 'local PAIR CSV' },
         fetchedAt: localMetadata?.generatedAt ?? null });
+      // A fabricated code must never fall through to an empty-looking course report.
+      if(localIndex)return sendJSON(res,404,{error:'Course not found in the local grade archive.'});
       const cached = cache.get(key);
       if (cached && Date.now() - cached.time < TTL) return sendJSON(res, 200, cached.data);
       const data = await profile(campus, subject, course);
+      if(data.stats==null && data.history==null && data.teachingTeam==null)return sendJSON(res,404,{error:'No historical course record found.'});
       if (data.sources.stats !== 'error') cache.set(key, { time: Date.now(), data });
       return sendJSON(res, 200, data);
     } catch (err) { return sendJSON(res, 503, { error: err.message }); }

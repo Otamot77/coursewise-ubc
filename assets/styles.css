@@ -511,3 +511,21 @@
   .workspace-grid{grid-template-columns:minmax(0,1fr)}
   .workspace-grid>.import-card,.workspace-grid>.results-panel{width:100%;min-width:0}
 }
+
+/* Course existence checks are inline, not a navigation to an empty report. */
+.home-search-feedback{max-width:930px;margin:12px 0 0;min-height:0;color:#365e50;font-size:14px;line-height:1.5}
+.home-search-feedback:empty{display:none}
+.home-search-feedback.error{padding:16px 18px;border:1px solid #d7e7df;border-radius:13px;background:#f6faf8;color:#284b40}
+.home-search-feedback p{margin:5px 0 10px;color:#708780;font-size:13px}
+.course-suggestion-heading{font-size:12px;font-weight:700;margin:11px 0 8px;color:#4d7464}
+.course-suggestions{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:9px;margin:9px 0 12px}
+.course-suggestion{display:flex;flex-direction:column;gap:3px;border:1px solid #dceae1;background:#fff;border-radius:10px;padding:12px;color:#215e4f;text-decoration:none}
+.course-suggestion:hover,.course-suggestion:focus-visible{background:#eaf7f1;border-color:#8ccbb3;text-decoration:none}
+.course-suggestion small{font-size:11px;color:#738680;font-weight:450;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.course-not-found{padding:34px;max-width:780px;margin:25px auto 100px;border:1px solid #dceae3;border-radius:18px;background:white}
+.course-not-found h2{font-size:27px;margin:6px 0 12px;color:#173d36}
+.course-not-found p{color:#6c827a;line-height:1.6}
+.course-not-found>.outline-btn{display:inline-block;margin-top:12px}
+@media(max-width:480px){.course-not-found{padding:22px}.home-search-feedback.error{padding:13px}}
+
+.course-browse-link{font-size:12px;font-weight:700;color:#257b61;text-decoration:underline;text-underline-offset:3px}
