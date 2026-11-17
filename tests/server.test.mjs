@@ -153,3 +153,29 @@ test('data source and footer distinguish UBC publication from community archive'
   assert.match(html,/github.com\/DonneyF\/ubc-pair-grade-data/);
   assert.match(html,/UBCGrades API/);
 });
+
+test('each route renders its own view immediately, without flashing the home page', async () => {
+  const routes = {
+    '/': 'home',
+    '/my-classes': 'classes',
+    '/explore': 'explore',
+    '/course?campus=UBCV&subject=CPSC&course=110': 'course',
+    '/gpa': 'gpa',
+    '/data': 'data'
+  };
+  for (const [path, expected] of Object.entries(routes)) {
+    const response = await fetch(`${root}${path}`);
+    assert.equal(response.status, 200, path);
+    const html = await response.text();
+    const sections = [...html.matchAll(/<section\\b[^>]*\\bdata-page="([^"]+)"[^>]*>/g)]
+      .map(([tag, name]) => ({
+        name,
+        active: /\\bis-active\\b/.test(tag),
+        hidden: /\\shidden(?=\\s|>)/.test(tag)
+      }));
+    assert.equal(sections.length, 6, `Expected six page views at ${path}`);
+    assert.deepEqual(sections.filter(view => view.active).map(view => view.name), [expected], path);
+    assert.ok(sections.every(view => view.hidden === (view.name !== expected)), `Wrong initial hidden states at ${path}`);
+  }
+});
+

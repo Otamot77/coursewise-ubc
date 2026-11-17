@@ -44,6 +44,27 @@ try {
   localIndex = null;
 }
 
+const INITIAL_ROUTES = Object.freeze({ '/': 'home', '/my-classes': 'classes', '/explore': 'explore', '/course': 'course', '/gpa': 'gpa', '/data': 'data' });
+
+/** Mark the correct page active in the HTML response, before the browser loads JS.
+ * All other pages receive the native hidden attribute, preventing a flash of Home.
+ * The client router still keeps navigation states up-to-date after initialization.
+ */
+function renderInitialPage(html, pathname) {
+  const active = INITIAL_ROUTES[pathname] ?? 'home';
+  return html.replace(/<section\b[^>]*\bdata-page="([^"]+)"[^>]*>/g, (tag, pageName) => {
+    if (!Object.values(INITIAL_ROUTES).includes(pageName)) return tag;
+    const reset = tag
+      .replace(/\s+hidden(?=\s|>)/g, '')
+      .replace(/\bclass="([^"]*)"/, (_, cls) => {
+        const classes = cls.split(/\s+/).filter(c => c && c !== 'is-active');
+        if (pageName === active) classes.push('is-active');
+        return `class="${classes.join(' ')}"`;
+      });
+    return pageName === active ? reset : reset.replace(/>$/, ' hidden>');
+  });
+}
+
 const mime = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.json': 'application/json; charset=utf-8', '.txt': 'text/plain; charset=utf-8' };
 
 async function upstream(pathname) {
@@ -159,7 +180,12 @@ const server = http.createServer(async (req, res) => {
   if (!resolved.startsWith(root + path.sep)) return sendJSON(res, 403, { error: 'Forbidden' });
   if (!['.html', '.css', '.mjs', '.js', '.svg', '.json', '.txt'].includes(path.extname(resolved))) return sendJSON(res, 404, { error: 'Not found' });
   try {
-    const content = await readFile(resolved);
+    const original = await readFile(resolved);
+    // The same HTML shell serves multiple URLs; set initial visibility on the server
+    // so the homepage never flashes before the client-side module initializes.
+    const content = requested === '/index.html'
+      ? Buffer.from(renderInitialPage(original.toString('utf8'), url.pathname), 'utf8')
+      : original;
     res.writeHead(200, { 'Content-Type': mime[path.extname(resolved)] || 'application/octet-stream', 'Cache-Control': 'no-cache', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin', 'Content-Security-Policy': "default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'self'" });
     res.end(req.method === 'HEAD' ? undefined : content);
   } catch { sendJSON(res, 404, { error: 'Not found' }); }

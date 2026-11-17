@@ -2,7 +2,9 @@
 
 An independent, unofficial UBC course explorer. Search **all 21,280 normalized campus/course-code entries in the supplied PAIR archive**, inspect published grade distributions and section statistics, and paste a saved/registered Workday schedule or upload its `.xlsx` export to see your courses together. Inspired by the MIT-licensed [UBCGrades](https://ubcgrades.com); source data originally compiled in [ubc-pair-grade-data](https://github.com/DonneyF/ubc-pair-grade-data). **The MIT license here covers only Coursewise code, not the upstream archive.**
 
-## Interface (v0.11.0)
+**v0.11.1:** The server pre-selects the requested page in the initial HTML, preventing a brief flash of the homepage during navigation. No client-side schedule data is changed.
+
+## Interface (v0.11.1)
 
 Coursewise now has **separate, directly navigable pages** (one view at a time):
 
@@ -17,7 +19,7 @@ Coursewise now has **separate, directly navigable pages** (one view at a time):
 
 Course pages link every 4.33 equivalency label to the [official UBC Arts table](https://www.arts.ubc.ca/degree-planning/academic-performance/promotion-continuation-grading/). Different evaluating institutions may use different mappings; no personal GPA is calculated from historical course means.
 
-## Instructor sections first (v0.11.0)
+## Instructor sections first (v0.11.1)
 
 On any course page, scroll to **Instructor section histories** and click **View full report →** next to an educator. The selected report shows the educator's retained sections across years, including section-level means, published median/quartiles, highest/lowest individual marks, and **grade spread (standard deviation)** when available. A session dropdown narrows the report. The URL supports `?campus=UBCV&subject=MATH&course=100&instructor=Andrew%20Rechnitzer` for deep links.
 
@@ -97,14 +99,14 @@ The repo **intentionally does not include any raw/derived grade dataset** pendin
 
 ### Running the complete data-included ZIP on Windows
 
-If you downloaded **`coursewise-ubc-v0.11.0-with-data.zip`**, extract it. In PowerShell, **change into the inner `coursewise-ubc` folder** containing `package.json`:
+If you downloaded **`coursewise-ubc-v0.11.1-with-data.zip`**, extract it. In PowerShell, **change into the inner `coursewise-ubc` folder** containing `package.json`:
 
 ```powershell
-cd "$HOME\Downloads\coursewise-ubc-v0.11.0-with-data\coursewise-ubc"
+cd "$HOME\Downloads\coursewise-ubc-v0.11.1-with-data\coursewise-ubc"
 npm start
 ```
 
-The ZIP already contains `data/course-index.json.gz`, `data/coverage.json` and `data/metadata.json`; **do not rerun the importer** for this download. If you have an older ZIP, stop its server with Ctrl+C first and start the v0.11.0 build. GitHub's source-only version still requires an import.
+The ZIP already contains `data/course-index.json.gz`, `data/coverage.json` and `data/metadata.json`; **do not rerun the importer** for this download. If you have an older ZIP, stop its server with Ctrl+C first and start the v0.11.1 build. GitHub's source-only version still requires an import.
 
 ## Tests
 
