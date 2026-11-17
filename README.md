@@ -70,20 +70,20 @@ See [DATA_AUDIT.md](DATA_AUDIT.md) for the detailed audit and interpretation.
 | `lib/schedule.mjs` | Browser-side course-code parser |
 | `lib/grades.mjs` | Normalize raw API profiles without inventing values |
 
-## Publishing to `Otamot77` on GitHub
+## Development on GitHub
 
-The linked GitHub app can edit existing repositories but currently has no **create repository** action. Create an empty repository named `coursewise-ubc` under `Otamot77` at <https://github.com/new> first. From this folder:
+The source code is maintained at [Otamot77/coursewise-ubc](https://github.com/Otamot77/coursewise-ubc). Clone the repository and import your own copy of the raw dataset:
 
 ```bash
-git init
-git add .
-git commit -m "feat: Coursewise UBC schedule insights and PAIR data importer"
-git branch -M main
-git remote add origin https://github.com/Otamot77/coursewise-ubc.git
-git push -u origin main
+git clone https://github.com/Otamot77/coursewise-ubc.git
+cd coursewise-ubc
+python3 scripts/import_pair_data.py /path/to/ubc-pair-grade-data-master.zip
+npm test
+npm run test:data
+npm start
 ```
 
-This will publish only source files because `data/*.json*` are git-ignored. Check the upstream dataset's terms and authorization before publishing, hosting or redistributing the generated index. Do not publish private student schedules.
+The source repo intentionally excludes generated data files. The application runs in API-fallback mode until you import the archive. Check the upstream dataset's terms and authorization before publishing, hosting or redistributing its derived index. Do not publish private student schedules.
 
 ## Roadmap ideas
 
