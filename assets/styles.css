@@ -319,3 +319,36 @@
 .lineup-footer .compare-label{font-size:11px}
 @media(max-width:950px){.course-overview{grid-template-columns:1fr}.lineup-highlights{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.lineup-graph{justify-self:start}.secondary-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.course-overview-averages,.course-overview-trend{padding:14px}.distribution-key-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.grade-svg-scroll{padding:5px}.grade-distribution-svg{min-width:670px}.overview-trend-heading h3{font-size:14px}.lineup-highlights strong{font-size:17px}.lineup-highlight-primary strong{font-size:23px}.lineup-footer{align-items:flex-start}.secondary-stat-grid{grid-template-columns:1fr 1fr}}
+
+/* v0.8: persistent site navigation while reading long course reports. */
+.site-header{position:sticky;top:0;z-index:90;box-shadow:0 4px 20px rgba(18,61,45,.04);backdrop-filter:blur(14px)}
+.course-quicklinks a, #gradePlanner, #instructor-comparison, #course-distribution{scroll-margin-top:110px}
+.classes-header-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.planner-jump{display:inline-flex;align-items:center;justify-content:center;border:1px solid #bbddce;border-radius:9px;padding:11px 15px;background:#eaf8f1;color:#146a4e;font-weight:770;font-size:12px;text-decoration:none;white-space:nowrap;box-shadow:0 4px 14px rgba(36,125,88,.07)}
+.planner-jump:hover{background:#d9f0e4;text-decoration:none}
+.planner-credit-hint{margin:5px 0 16px;color:#647e73;font-size:11.5px;line-height:1.6}
+.planner-credit-hint a{color:#178563;text-decoration:underline}
+/* SVG-based comparison histograms: explicit coordinates cannot collapse to zero height. */
+.instructor-dist-scroll{width:100%;overflow-x:auto;margin:11px 0 4px}
+.instructor-dist-svg{width:100%;min-width:420px;height:auto;display:block}
+.instructor-dist-bar{transition:fill .16s ease,filter .16s ease}
+.instructor-dist-group:hover .instructor-dist-bar{fill:#147659;filter:drop-shadow(0 2px 3px #2ca58040)}
+.instructor-delta-explainer{background:#f2f9f6;border:1px solid #dcebe3;border-radius:10px;padding:13px 17px;color:#547569;line-height:1.6;font-size:12px;margin:12px 0 17px}
+.instructor-delta-explainer strong{color:#245a48;display:block;margin-bottom:2px}
+/* The tooltip is inside SVG, so it is positioned correctly even on zoomed charts. */
+.history-point{cursor:crosshair;outline:none}
+.history-hover-tooltip,.history-hover-guide{opacity:0;pointer-events:none;transition:opacity .14s ease}
+.history-point:hover .history-hover-tooltip,.history-point:focus .history-hover-tooltip,.history-point:hover .history-hover-guide,.history-point:focus .history-hover-guide{opacity:1}
+.history-hover-tooltip{filter:drop-shadow(0 4px 8px rgba(20,51,41,.25))}
+.history-point:focus .history-point-hit{stroke:#32896c;stroke-width:2}
+@media(max-width:800px){
+  .site-header{height:auto;min-height:68px}
+  .header-inner{min-height:68px;flex-wrap:wrap;gap:0 12px;padding:10px 0 0}
+  .brand{padding-bottom:10px}
+  .header-tag{display:none}
+  .desktop-nav{order:3;width:100%;margin-left:0;overflow-x:auto;gap:24px;height:44px;white-space:nowrap;scrollbar-width:thin;justify-content:flex-start}
+  .desktop-nav a{height:44px;flex:0 0 auto!important;display:flex!important;font-size:12px}
+  .classes-header-actions{width:100%}
+  .instructor-dist-svg{min-width:550px}
+  #gradePlanner,#instructor-comparison,#course-distribution{scroll-margin-top:128px}
+}

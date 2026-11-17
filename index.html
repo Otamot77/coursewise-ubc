@@ -21,8 +21,8 @@
 <main id="home">
 <section aria-labelledby="home-heading" class="shell home-page is-active" data-page="home">
 <div class="eyebrow"><span class="eyebrow-icon">✦</span> HISTORICAL UBC COURSE GRADES, MADE USEFUL</div>
-<h1 id="home-heading">Find your course.<br/><span>Know what to expect.</span></h1>
-<p>Search one UBC course to see historical averages, grade distributions, section sizes, teaching history, and highs and lows — all in one detailed view.</p>
+<h1 id="home-heading">Know your courses.<br/><span>Plan your grades.</span></h1>
+<p>Explore historical grades and distributions, compare instructors, import your Workday schedule, and plan the average you want to achieve.</p>
 <form autocomplete="off" class="home-search" id="homeForm">
 <label class="sr-only" for="homeCode">Search a UBC course by code</label>
 <span aria-hidden="true" class="home-search-glyph">⌕</span>
@@ -37,7 +37,7 @@
 <div class="trust-line"><span>◈ Actual published grade counts</span><span>◈ UBC Vancouver + Okanagan</span><span>◈ Missing values clearly labeled</span></div>
 </section>
 <section class="shell workspace-section" data-page="classes" id="workspace">
-<div class="section-header"><div><span class="section-index">01 / YOUR SEMESTER</span><h2>All your classes, one clear overview.</h2><p>Import a Workday schedule or add classes individually.</p></div><span class="soft-pill">LOCAL-ONLY SCHEDULE</span></div>
+<div class="section-header"><div><span class="section-index">01 / YOUR SEMESTER</span><h2>All your classes, one clear overview.</h2><p>Import a Workday schedule or add classes individually.</p></div><div class="classes-header-actions"><a class="planner-jump" id="plannerJump" href="#gradePlanner" hidden>↘ Jump to Grade Goals</a><span class="soft-pill">LOCAL-ONLY SCHEDULE</span></div></div>
 <div class="workspace-grid">
 <aside class="import-card">
 <div class="import-top"><span class="mini-icon">⇪</span><span class="chip">WORKDAY FRIENDLY</span></div>
@@ -73,7 +73,7 @@ CPSC_V 210 - 101" spellcheck="false"></textarea>
 <div class="planner-alert" id="plannerAlert" role="status" aria-live="polite"></div>
 <div class="planner-target-range" id="plannerRange" hidden></div>
 <div class="planner-table-heading"><h3>Plan by course</h3><p>Each course starts at <strong>3 assumed credits</strong>. Change credits to match your Workday registration. Moving a grade slider fixes that course; the others rebalance automatically.</p></div>
-<div class="planner-rows" id="plannerRows"></div>
+<p class="planner-credit-hint">Enter each course’s actual credit value from Workday; most are 3 credits, but UBC also offers 1.5-credit courses. <a href="https://vancouver.calendar.ubc.ca/course-descriptions/courses/baitv-518-data-visualization" target="_blank" rel="noopener noreferrer">See a UBC Calendar example ↗</a></p><div class="planner-rows" id="plannerRows"></div>
 <div class="planner-requirement" id="plannerRequirement" aria-live="polite"></div>
 <details class="planner-method"><summary>How the percentile estimate works and what it can't tell you</summary><p>For unlocked courses with fully published historical grade bands, Coursewise finds a common within-course percentile whose estimated grades reach your credit-weighted target. The estimates use linear interpolation inside each published grade range, so they're inherently approximate, especially for the broad 0–49 and 90–100 bands. A percentile of 60 means roughly the 60th percentile <em>in each course</em>, not a 60% probability of reaching your target or an observed semester-wide student ranking.</p><p>The data contains no matched individual students across courses. Missing or privacy-suppressed bands, incomplete sections, and missing credit values are never silently filled in. Course baseline means may come from different academic sessions. Planner settings stay in this browser only; they aren't sent to the server.</p></details>
 </section>

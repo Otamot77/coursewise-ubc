@@ -81,3 +81,26 @@ test('My Classes restores saved courses and stats after navigating back from ful
   assert.match(state.get('dataStatus').textContent,/1 courses with data/);
   assert.equal(state.get('courseCount').textContent,1);
 });
+
+test('course reports show the new instructor bar chart and explain term-matched comparison',async()=>{
+  const state=await mount('/course','?campus=UBCV&subject=ACAM&course=300');
+  const html=state.get('courseView').innerHTML;
+  assert.match(html,/instructor-dist-svg/);
+  assert.match(html,/instructor-dist-bar/);
+  assert.match(html,/Difference vs course/);
+  assert.match(html,/academic terms they taught/);
+  assert.match(html,/history-hover-tooltip/);
+});
+
+test('sticky navigation, Grade Goals shortcut and credit explanation are present on all pages',async()=>{
+  const {readFileSync}=await import('node:fs');
+  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
+  const css=readFileSync(new URL('../assets/styles.css',import.meta.url),'utf8');
+  assert.match(html,/Know your courses/);
+  assert.match(html,/compare instructors, import your Workday schedule/i);
+  assert.match(html,/id="plannerJump" href="#gradePlanner"/);
+  assert.match(html,/1\.5-credit courses/);
+  assert.match(css,/\.site-header\{position:sticky;top:0;z-index:90/);
+  assert.match(css,/\.desktop-nav a\{height:44px;flex:0 0 auto!important;display:flex!important/);
+  assert.match(css,/\.history-point:hover \.history-hover-tooltip/);
+});
