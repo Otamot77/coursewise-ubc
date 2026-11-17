@@ -92,3 +92,16 @@ test('primary sections have distinct direct URLs served by the application', asy
     assert.match(html, /id="homeForm"/);
   }
 });
+
+
+test('My Classes includes the local-only grade goal planner', async () => {
+  const response = await fetch(`${root}/my-classes`);
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /id="gradePlanner"/);
+  assert.match(html, /id="plannerTarget"/);
+  assert.match(html, /id="plannerRows"/);
+  const lib = await fetch(`${root}/lib/planner.mjs`);
+  assert.equal(lib.status, 200);
+  assert.match(await lib.text(), /calculateGradePlan/);
+});

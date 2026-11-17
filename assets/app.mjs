@@ -1,5 +1,6 @@
 import { parseSchedule, normalizeSavedCourses, courseKey, courseLabel } from '../lib/schedule.mjs';
 import { normalizeProfile, fmtPercent, historyRange, recentChange, GRADE_BANDS, GPA_EQUIVALENCIES, gpaEquivalency, aggregateDistributions, validApiPath } from '../lib/grades.mjs';
+import { calculateGradePlan, chooseDistribution, DEFAULT_CREDITS, validCredits, validGrade } from '../lib/planner.mjs';
 
 const $ = id => document.getElementById(id);
 const UBC_GPA_SOURCE = 'https://www.arts.ubc.ca/degree-planning/academic-performance/promotion-continuation-grading/';
@@ -13,6 +14,19 @@ for (const nav of document.querySelectorAll('[data-nav]')) {
 }
 const courseUrl = c => `/course?${new URLSearchParams({campus:c.campus,subject:c.subject,course:c.course})}`;
 const STORAGE_KEY = 'coursewise:schedule:v1';
+const PLANNER_STORAGE = 'coursewise:grade-planner:v1';
+let plannerSettings = { target: 80, entries: {} };
+try {
+  const stored = JSON.parse(localStorage.getItem(PLANNER_STORAGE) || '{}');
+  if (validGrade(stored.target)) plannerSettings.target = stored.target;
+  if (stored.entries && typeof stored.entries === 'object' && !Array.isArray(stored.entries)) plannerSettings.entries = stored.entries;
+} catch { /* Storage unavailable or outdated */ }
+function savePlanner() {
+  const allowed = new Set(courses.map(courseKey));
+  for (const key of Object.keys(plannerSettings.entries)) if (!allowed.has(key)) delete plannerSettings.entries[key];
+  try { localStorage.setItem(PLANNER_STORAGE, JSON.stringify(plannerSettings)); } catch { /* Storage unavailable */ }
+}
+
 const escapeHTML = input => String(input ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 let courses = [];
 let profiles = new Map();
@@ -23,7 +37,7 @@ let expanded = new Set();
 let exampleMode = false;
 
 try { courses = normalizeSavedCourses(JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')); } catch { courses = []; }
-function save() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(courses)); } catch { /* Storage disabled by browser */ } }
+function save() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(courses)); } catch { /* Storage disabled by browser */ } savePlanner(); }
 function message(text, isError = false) { $('importMessage').textContent = text; $('importMessage').classList.toggle('error', isError); }
 
 function addCourses(incoming) {
@@ -81,10 +95,11 @@ function render() {
   // Explicitly unweighted average of course historical means; not an individual's expected GPA.
   $('semesterAverage').textContent = hasScore.length ? fmtPercent(hasScore.reduce((a, b) => a + b, 0) / hasScore.length) : '—';
   $('dataStatus').textContent = courses.length ? `${count} courses with data${pending ? ` · ${pending} loading` : ''}${errors.size ? ` · ${errors.size} unavailable` : ''}` : 'Add courses to see their historical insights.';
-  $('courseCards').innerHTML = sortedCourses().map(renderCourse).join('');
+  $('courseCards').innerHTML = sortedCourses().map(c => renderCourse(c)).join('');
   $('compareStrip').hidden = selected.size === 0;
   $('compareText').textContent = `${selected.size} selected for comparison (max 4)`;
   if (!$('comparePanel').hidden) renderComparison();
+  if (page === 'classes') renderPlanner();
 }
 
 const fmtCount = n => n == null ? '—' : n.toLocaleString();
@@ -368,4 +383,144 @@ $('homeForm').addEventListener('submit', event => {
   } else if (text) {
     window.location.assign(`/explore?${new URLSearchParams({q:text})}`);
   } else $('homeMessage').textContent='Enter a course code, such as CPSC 110.';
+});
+
+// Grade Goal Planner: only public course/section distributions are requested
+// from the API. User-defined credits and planned grades stay in localStorage.
+function plannerEntry(key) {
+  const value = plannerSettings.entries[key] || {};
+  return {
+    credits: validCredits(value.credits) ? value.credits : DEFAULT_CREDITS,
+    fixedGrade: validGrade(value.fixedGrade) ? value.fixedGrade : null,
+    completed: value.completed === true && validGrade(value.fixedGrade)
+  };
+}
+function updatePlanner(key, patch) {
+  plannerSettings.entries[key] = { ...plannerEntry(key), ...patch };
+  savePlanner(); renderPlanner();
+}
+function planModels() {
+  return courses.map(c => {
+    const id = courseKey(c), profile = profiles.get(id), options = plannerEntry(id);
+    return {
+      id, label: courseLabel(c), credits: options.credits, fixedGrade: options.fixedGrade,
+      completed: options.completed, average: profile?.average5 ?? profile?.average ?? null,
+      distribution: chooseDistribution(profile),
+      dataPending: loading.has(id) || (!profile && !errors.has(id)),
+      dataError: errors.get(id) || null
+    };
+  });
+}
+const fmtPlanner = value => Number.isFinite(value) ? `${value.toFixed(1)}%` : '—';
+const fmtStanding = value => Number.isFinite(value) ? `~${Math.round(value)}th` : '—';
+function renderPlanner() {
+  if (page !== 'classes') return;
+  const panel = $('gradePlanner');
+  panel.hidden = courses.length === 0;
+  if (!courses.length) return;
+  const target = validGrade(plannerSettings.target) ? plannerSettings.target : 80;
+  $('plannerTarget').value = String(target);
+  const models = planModels();
+  const plan = calculateGradePlan(models, target);
+  $('plannerBaseline').textContent = fmtPlanner(plan.baseline);
+  $('plannerBaselineNote').textContent = plan.baselineComplete
+    ? 'Recent 5-year course means where available; otherwise all-time means'
+    : `Only ${plan.baselineCovered} of ${models.length} courses have published means`;
+  $('plannerPercentile').textContent = plan.feasibleCommon ? fmtStanding(plan.percentile) : '—';
+  $('plannerAchieved').textContent = fmtPlanner(plan.achieved);
+  const delta = plan.achieved == null ? null : plan.achieved - target;
+  $('plannerGap').textContent = delta == null ? 'Fix missing-data course grades to complete your scenario'
+    : Math.abs(delta) < 0.05 ? 'Meets the target (approximate)' : `${Math.abs(delta).toFixed(1)} percentage points ${delta > 0 ? 'above' : 'below'} target`;
+  const messages = [];
+  if (models.some(x => x.dataPending)) messages.push('Historical records are still loading. Percentile results will appear when available.');
+  if (plan.status === 'missing') messages.push(`No defensible common-percentile estimate: ${plan.missing.length} unplanned course(s) lack a complete published grade distribution. Set an assumed grade for those courses to see a partial historical benchmark for the rest.`);
+  if (plan.status === 'impossible') messages.push('With your fixed grades, the target is mathematically impossible: unlocked courses would need a weighted average outside 0–100%.');
+  if (plan.status === 'outside-common') messages.push('A common percentile across every unlocked course cannot reach this target from the published bins. You can still explore different grades by fixing individual courses.');
+  if (plan.status === 'all-fixed') messages.push('All courses have fixed grades. This displays your calculated semester average; no percentile benchmark is inferred for the whole semester.');
+  if (plan.feasibleCommon) messages.push(`Estimated common standing: about the ${Math.round(plan.percentile)}th percentile in each unlocked course. This is NOT your percentile among all students’ combined semester averages, nor a probability of success.`);
+  if (models.some(x => x.distribution?.yearLag >= 5)) messages.push('Some available grade distributions are five or more academic years old.');
+  if (!plan.baselineComplete) messages.push('The historical baseline is unavailable because at least one course lacks a published average.');
+  $('plannerAlert').textContent = messages.join(' ');
+  $('plannerAlert').classList.toggle('planner-alert-warning', ['missing','impossible','outside-common'].includes(plan.status));
+  const range = $('plannerRange');
+  range.hidden = !plan.range;
+  if (plan.range) {
+    range.innerHTML = `<span>Estimated overall at the same standing across unlocked courses:</span><div><span>25th <b>${fmtPlanner(plan.range.q25)}</b></span><span>50th <b>${fmtPlanner(plan.range.median)}</b></span><span>75th <b>${fmtPlanner(plan.range.q75)}</b></span></div>`;
+  }
+  const requirement = $('plannerRequirement');
+  requirement.textContent = plan.requiredFlexibleAverage == null
+    ? `All ${plan.credits} credits fixed. Planned weighted average: ${fmtPlanner(plan.achieved)}.`
+    : `To reach ${fmtPlanner(target)}, you need ${fmtPlanner(plan.requiredFlexibleAverage)} on average across your remaining ${models.filter(m => m.fixedGrade == null).length} unlocked courses (${models.filter(m => m.fixedGrade == null).reduce((s,x)=>s+x.credits,0)} credits). This is exact grade arithmetic; the percentile suggestions are estimates.`;
+  $('plannerRows').innerHTML = models.map(model => {
+    const row = plan.rows.find(r => r.id === model.id);
+    const manual = row.fixed;
+    const options = plannerEntry(model.id);
+    const displayGrade = row.grade;
+    const sliderValue = displayGrade ?? model.average ?? 75;
+    const status = model.distribution
+      ? `${escapeHTML(model.distribution.session)} · ${model.distribution.n.toLocaleString()} published grades`
+      : model.dataPending ? 'Historical data loading…' : model.dataError ? 'Grade data unavailable' : 'No complete published grade bands';
+    const standing = row.percentile == null ? 'Standing unavailable' : `~${Math.round(row.percentile)}th percentile`;
+    return `<div class="planner-course-row" data-planner-row="${escapeHTML(model.id)}">
+    <div class="planner-course-head"><div><a href="${escapeHTML(courseUrl(courses.find(c=>courseKey(c)===model.id)))}" class="planner-course-name">${escapeHTML(model.label)}</a><span class="planner-course-data">${status}</span></div><span class="planner-course-mean">Historical mean: ${fmtPlanner(model.average)}</span></div>
+    <div class="planner-course-controls">
+    <label class="planner-credits">Credits<input type="number" data-planner-credits="${escapeHTML(model.id)}" aria-label="Credits for ${escapeHTML(model.label)}" min="0.5" max="18" step="0.5" value="${options.credits}"/></label>
+    <div class="planner-grade-control"><div class="planner-grade-top"><label for="planner-grade-${escapeHTML(model.id)}">${options.completed ? 'Final grade' : manual ? 'Fixed grade target' : 'Suggested grade'}</label><strong data-planner-display="${escapeHTML(model.id)}">${displayGrade == null ? 'Set a grade' : fmtPlanner(displayGrade)}</strong></div><input id="planner-grade-${escapeHTML(model.id)}" type="range" min="0" max="100" step="0.5" value="${sliderValue}" data-planner-slider="${escapeHTML(model.id)}" aria-label="Planned percentage for ${escapeHTML(model.label)}"/><span class="planner-grade-foot">${standing}${!manual && displayGrade != null ? ' · Auto suggestion' : manual ? ' · Fixed' : ''}</span></div>
+    <label class="planner-manual-grade">Grade %<input type="number" data-planner-number="${escapeHTML(model.id)}" aria-label="Enter grade percentage for ${escapeHTML(model.label)}" min="0" max="100" step="0.1" value="${manual ? options.fixedGrade : displayGrade == null ? '' : displayGrade.toFixed(1)}" placeholder="—"/></label>
+    <label class="planner-completed"><input type="checkbox" data-planner-complete="${escapeHTML(model.id)}" ${options.completed?'checked':''}/> Completed</label>
+    <button class="text-button planner-release" data-planner-auto="${escapeHTML(model.id)}" type="button" ${!manual?'disabled':''}>Auto ↺</button>
+    </div></div>`;
+  }).join('');
+}
+$('plannerTarget').addEventListener('change', e => {
+  const value = Number(e.target.value);
+  if (!validGrade(value)) { e.target.value = String(plannerSettings.target); return; }
+  // A second change/blur event can follow a value commit; don't rebuild inputs
+  // and steal focus when the user moves straight to a course grade.
+  if (value === plannerSettings.target) return;
+  plannerSettings.target = value;
+  savePlanner(); renderPlanner();
+});
+$('plannerRows').addEventListener('input', e => {
+  const key = e.target.dataset.plannerSlider;
+  if (!key) return;
+  const output = $('plannerRows').querySelectorAll('[data-planner-display]');
+  for (const label of output) if (label.dataset.plannerDisplay === key) label.textContent = `${Number(e.target.value).toFixed(1)}%`;
+});
+$('plannerRows').addEventListener('change', e => {
+  const el = e.target;
+  const key = el.dataset.plannerCredits || el.dataset.plannerSlider || el.dataset.plannerNumber || el.dataset.plannerComplete;
+  if (!key) return;
+  const current = plannerEntry(key);
+  if (el.dataset.plannerCredits) {
+    const credits = Number(el.value);
+    if (validCredits(credits)) updatePlanner(key, {credits});
+    else renderPlanner();
+  } else if (el.dataset.plannerSlider || el.dataset.plannerNumber) {
+    if (!el.value.trim()) { renderPlanner(); return; }
+    const value = Number(el.value);
+    if (validGrade(value)) updatePlanner(key, {fixedGrade:value});
+    else renderPlanner();
+  } else if (el.dataset.plannerComplete) {
+    if (el.checked) {
+      if (current.fixedGrade == null) {
+        $('plannerAlert').textContent = 'Enter your actual final grade in the Grade % box before marking a course completed. Automatic suggestions are not actual grades.';
+        $('plannerAlert').classList.add('planner-alert-warning');
+        el.checked = false;
+        return;
+      }
+      updatePlanner(key, {completed:true});
+    } else updatePlanner(key, {completed:false});
+  }
+});
+$('plannerRows').addEventListener('click', e => {
+  const key = e.target.closest('[data-planner-auto]')?.dataset.plannerAuto;
+  if (key) updatePlanner(key, {fixedGrade:null,completed:false});
+});
+$('plannerReset').addEventListener('click', () => {
+  for (const c of courses) {
+    const key = courseKey(c), options=plannerEntry(key);
+    if (!options.completed) plannerSettings.entries[key] = {...options,fixedGrade:null};
+  }
+  savePlanner();renderPlanner();
 });

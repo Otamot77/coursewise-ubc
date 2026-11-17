@@ -160,3 +160,54 @@
 .detail-collapse .history-chart{margin-top:12px}
 /* Keep the main search input prominent, rather than letting the CTA consume the row. */
 @media(min-width:761px){.home-search input{flex:1 1 0!important;min-width:240px;width:auto}.home-search button{flex:0 0 auto!important;width:auto!important;padding-left:28px;padding-right:28px}}
+
+/* Grade goal planning is intentionally secondary to the primary search experience. */
+.grade-planner{margin:38px 0 20px;padding:30px;border:1px solid #dcebe5;background:#fff;border-radius:17px;box-shadow:0 14px 44px #173b330b}
+.planner-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:20px}
+.planner-heading h2{font-size:28px;line-height:1.2;letter-spacing:-1px;margin:10px 0 10px}
+.planner-heading p,.planner-table-heading p{font-size:12px;color:#7a8d96;line-height:1.7;margin:0;max-width:720px}
+.planner-heading .outline-btn{flex:none}
+.planner-control-row{display:flex;align-items:center;justify-content:space-between;gap:25px;border:1px solid #e4efea;border-radius:13px;background:#f7fbf9;padding:20px 23px;margin:25px 0 18px}
+.planner-target-label{font-size:16px;font-weight:740;color:#23423b}
+.planner-target-label span{font-size:11px;color:#8ca19a;display:block;margin-top:6px;font-weight:500}
+.planner-target-input{display:flex;align-items:center;background:#fff;border:1px solid #cfe7da;border-radius:11px;padding:2px 12px 2px 3px;color:#389775;font-weight:750;font-size:20px}
+.planner-target-input input{width:84px;text-align:right;border:0;outline:0;color:#1c765a;font-weight:800;font-size:29px;padding:6px 2px 6px 5px;background:transparent}
+.planner-summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.planner-summary-tile{display:flex;flex-direction:column;gap:8px;border:1px solid #e8efec;border-radius:12px;padding:18px;background:#fcfefd;min-width:0}
+.planner-summary-tile.emphasis{background:#ebf7f0;border-color:#d2e9db}
+.planner-summary-tile>span{font-size:11px;font-weight:700;color:#6a837c}
+.planner-summary-tile strong{font-weight:790;letter-spacing:-1.2px;font-size:31px;color:#263d36}
+.planner-summary-tile.emphasis strong{color:#168864}
+.planner-summary-tile small{font-size:10px;line-height:1.5;color:#87a099}
+.planner-alert{margin:18px 0;padding:15px 17px;background:#f5faf7;border-radius:11px;color:#467766;font-size:12px;line-height:1.7;border-left:3px solid #60b691}
+.planner-alert-warning{background:#fff8eb;color:#90652f;border-left-color:#e0aa54}
+.planner-target-range{display:flex;gap:20px;align-items:center;justify-content:space-between;font-size:11px;color:#6d877d;margin-bottom:22px;padding:12px 17px;border-radius:10px;background:#f7faf8}
+.planner-target-range>div{display:flex;gap:21px;flex-wrap:wrap}
+.planner-target-range b{font-size:13px;color:#275849;margin-left:3px}
+.planner-table-heading{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px;margin:30px 0 12px}
+.planner-table-heading h3{font-size:18px;letter-spacing:-.45px;margin:0}
+.planner-table-heading p{max-width:710px}
+.planner-rows{display:grid;gap:11px}
+.planner-course-row{border:1px solid #e5ece9;border-radius:12px;padding:18px 19px;background:#fff}
+.planner-course-head{display:flex;gap:12px;justify-content:space-between;align-items:baseline;margin-bottom:13px}
+.planner-course-head>div{display:flex;align-items:baseline;flex-wrap:wrap;gap:13px}
+.planner-course-name{font-size:15px;font-weight:770;color:#236d56}
+.planner-course-data,.planner-course-mean{font-size:10px;color:#8ba09a}
+.planner-course-controls{display:grid;grid-template-columns:90px minmax(170px,1fr) 95px 120px 65px;align-items:end;column-gap:16px;row-gap:12px}
+.planner-credits,.planner-manual-grade{display:flex;flex-direction:column;gap:6px;font-size:11px;font-weight:680;color:#647d75}
+.planner-credits input,.planner-manual-grade input{width:100%;background:#fafdff;border:1px solid #dae7e3;padding:9px 8px;border-radius:7px;font-size:13px;color:#304b41;min-width:0}
+.planner-grade-control{display:flex;flex-direction:column;gap:9px;min-width:0}
+.planner-grade-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px;color:#668077;font-size:11px;font-weight:680}
+.planner-grade-top strong{color:#287c5c;font-size:17px;font-weight:780;white-space:nowrap}
+.planner-grade-control input[type=range]{width:100%;accent-color:#25956e;cursor:ew-resize;margin:0}
+.planner-grade-foot{font-size:10px;color:#91a29c}
+.planner-completed{font-size:11px;color:#586f67;font-weight:650;white-space:nowrap;display:flex;align-items:center;gap:7px;padding-bottom:11px}
+.planner-completed input{accent-color:#218e68}
+.planner-release{padding:9px 0!important;font-size:11px!important;white-space:nowrap}
+.planner-release:disabled{color:#adbdb7;cursor:default}
+.planner-requirement{margin:20px 0 14px;padding:15px 17px;color:#376957;font-size:12px;line-height:1.75;background:#eff9f3;border-radius:11px}
+.planner-method{border-top:1px solid #e6efeb;padding-top:18px;color:#748980;font-size:11px;line-height:1.75}
+.planner-method summary{font-size:12px;color:#327b61;cursor:pointer;font-weight:760}
+.planner-method p{max-width:1000px}
+@media(max-width:1030px){.planner-course-controls{grid-template-columns:75px 1fr 85px;row-gap:15px}.planner-completed,.planner-release{align-self:center;padding:0!important}}
+@media(max-width:730px){.grade-planner{padding:20px 15px}.planner-heading,.planner-control-row{align-items:stretch;flex-direction:column}.planner-heading h2{font-size:25px}.planner-target-input{width:max-content}.planner-summary-grid{grid-template-columns:1fr}.planner-summary-tile{padding:14px}.planner-summary-tile strong{font-size:25px}.planner-course-controls{grid-template-columns:75px minmax(0,1fr);gap:14px}.planner-grade-control{grid-column:2}.planner-manual-grade,.planner-completed,.planner-release{grid-column:auto}.planner-course-head{flex-direction:column;gap:5px}.planner-target-range{flex-direction:column;align-items:flex-start;gap:8px}}
