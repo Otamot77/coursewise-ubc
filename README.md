@@ -2,20 +2,28 @@
 
 An independent, unofficial UBC course explorer. Search **all 21,280 normalized campus/course-code entries in the supplied PAIR archive**, inspect published grade distributions and section statistics, and paste a saved/registered Workday schedule or upload its `.xlsx` export to see your courses together. Inspired by the MIT-licensed [UBCGrades](https://ubcgrades.com); source data originally compiled in [ubc-pair-grade-data](https://github.com/DonneyF/ubc-pair-grade-data). **The MIT license here covers only Coursewise code, not the upstream archive.**
 
-## Interface (v0.10.0)
+## Interface (v0.11.0)
 
 Coursewise now has **separate, directly navigable pages** (one view at a time):
 
 | URL | Primary use |
 |---|---|
 | `/` | **Search one course** — the homepage and main workflow |
-| `/course?campus=UBCV&subject=CPEN&course=221A` | Full individual course report: visible SVG grade histogram, course-average trend, **instructor comparisons**, section selection and expandable statistics |
+| `/course?campus=UBCV&subject=CPEN&course=221A` | Full individual course report: visible SVG grade histogram, course-average trend, **instructor section histories with a full educator report**, an optional two-person comparison, and section selection |
 | `/my-classes` | Local-only Workday Excel (.xlsx) or text import, compact course summaries and **Grade Goal Planner** |
 | `/explore` | Catalog browser: **3 × 3 / nine results per page** with course-level and type-ahead subject filters |
 | `/gpa` | UBC grading bands and published 4.33 equivalency table |
 | `/data` | Source provenance, incomplete-data notes and archive coverage |
 
 Course pages link every 4.33 equivalency label to the [official UBC Arts table](https://www.arts.ubc.ca/degree-planning/academic-performance/promotion-continuation-grading/). Different evaluating institutions may use different mappings; no personal GPA is calculated from historical course means.
+
+## Instructor sections first (v0.11.0)
+
+On any course page, scroll to **Instructor section histories** and click **View full report →** next to an educator. The selected report shows the educator's retained sections across years, including section-level means, published median/quartiles, highest/lowest individual marks, and **grade spread (standard deviation)** when available. A session dropdown narrows the report. The URL supports `?campus=UBCV&subject=MATH&course=100&instructor=Andrew%20Rechnitzer` for deep links.
+
+The **Compare two instructors** controls now sit below the educator report, stay closed until requested, and permit at most two selections. In the general course report, individual highest/lowest marks remain in the section statistics; the historical extrema section shows only the highest/lowest **course-term mean**.
+
+Standard deviation is measured in **percentage points** and indicates how widely individual marks vary around the section mean. It's not the same as an average or a percentile. For example, MATH 100 in 2020W section 101 has a reported section average of 65.48% and standard deviation of 16.12 points in the supplied historical archive. Older PAIR/Tableau records sometimes include this; modern Tableau v2 generally does not. The site never calculates a combined class standard deviation by averaging individual section standard deviations. A dash means unavailable.
 
 ## More useful course comparison (v0.10.0)
 
@@ -44,7 +52,7 @@ The updated SVG geometry, chart tooltips, view markup, and sticky navigation hav
 ## Changes introduced in v0.7
 
 - **Fixed grade-distribution rendering:** replaced CSS-relative-height columns with an accessible SVG histogram where each published count maps to an explicit positive-height bar. Missing and privacy-suppressed grade bins remain unavailable, not zero. Academic session / section filters continue to work.
-- **Reorganized course report:** primary course-average summary is adjacent to a labeled historical average trend. The grade distribution is next, followed by instructor comparisons. Historical high/low course means, quartiles, high/low student marks and section evidence are collapsed into lower-priority details.
+- **Reorganized course report:** primary course-average summary is adjacent to a labeled historical average trend. The grade distribution is next, followed by instructor section histories and optional comparison. Historical high/low course means and section marks are kept separate to avoid duplicate statistics; section median and quartiles stay visible when available.
 - **More useful My Classes lineup:** each saved course now displays recent five-year mean, latest published term mean, all-time mean, a mini historical trend and data coverage without opening Full report.
 - **Workday Excel imports:** choose a local `.xlsx` file in My Classes. Coursewise reads shared strings, inline strings, multiple worksheets and separate section columns, then previews **only extracted course codes and section numbers** in the text box; click **Find my courses** to add them. The workbook is never uploaded. Supports files under 8 MB in recent Chrome, Edge and Firefox using browser-native ZIP decompression. This is an initial format-compatible implementation; a real user-provided Workday Excel export is still needed to validate every Workday layout. Password-protected spreadsheets, legacy `.xls`, PDF and direct Workday account access are not supported.
 
@@ -63,7 +71,7 @@ The updated SVG geometry, chart tooltips, view markup, and sticky navigation hav
 - **Prominent grade distribution charts:** 11 UBC letter-grade percentage bands, from `<50` through `90–100`. Charts and exact-count tables show published per-section counts for a chosen academic session and section, or the combined available records for one session. **Blank/suppressed values are never treated as zero**; aggregated partial counts display as lower bounds.
 - **Class size and section statistics:** Enrolled (older source) vs Reported (newer source) student counts; course or section mean, high/low, median, 25th/75th percentiles, standard deviation, and older PAIR pass/fail/withdraw/audit counts when available. Missing fields are shown as unavailable; pass rate uses pass ÷ (pass + fail) only where both are published.
 - **Published UBC 4.33 equivalency:** complete lookup for whole percentages 50–90 (90–100 → 4.33), plus official letter-grade ranges. A fractional course mean is **rounded to the nearest integer** and marked ≈. **This is an equivalency of the course's mean percentage, not a true class GPA or a forecast of your own GPA.** UBC uses percentage grades; other credential evaluators use their own 4.33/4.0 mappings. The UBC reference table does not specify below-50 GPA points, so Coursewise does not assign them.
-- **Instructor comparisons (new in v0.6):** Open any individual course and select **Compare instructors**. Compare up to three named educators using student-weighted section means (unweighted when section counts are missing), numbers of graded/recorded sections, highs/lows of their section means, the difference versus the course sections from the same terms, and full 11-band grade distributions normalized by published grade outcomes. Search names, sort, filter to recent five academic years, all retained records, or one academic session. Inspect section-level evidence and co-teaching caveats. Educator names are historical teaching-team *attributions*, not verified sole instructors: co-taught sections are associated with multiple names and older files may include teaching assistants. Small samples, missing bands, and the 120-section history cap limit valid comparisons. **No inference of instructor quality or grading causation.**
+- **Instructor section reports (v0.11):** Every recorded educator now has a **View full report →** action showing all retained, attributed sections, a session filter, published distribution, weighted mean, class sizes, medians, quartiles, high/low marks and standard deviation where available. You can deep-link with `&instructor=Name` on the course report URL. The original instructor side-by-side chart is now **optional and limited to two educators**, with a common percentage scale. Records sometimes list more than one educator or a TA, so the data describes named attribution, not an instructor effect. Large courses retain up to 120 recent sections.
 - **Semester importer:** Extract codes/sections from Workday `.xlsx` exports, copied schedules, `.txt`, `.csv`, `.ics`, and `.html` files *in your browser*. No Workday credentials or raw imported text are sent to the server. Save a local course list, browse historical trends, sort, compare courses and inspect individual sections. Related suffix course codes (e.g. `221`, `221A`) remain separate.
 - **Grade Goal Planner (new in v0.5):** After importing courses in **My Classes**, enter a target percentage. The tool computes the *credit-weighted average of published historical course means* and finds a common approximate within-course percentile across all unlocked courses whose complete grade bands are available. Edit credit weights (default **3 assumed credits**, not derived from Workday); slide or type a planned grade to fix one course and automatically rebalance the others. You may mark a course completed **only after entering an actual final grade**. The calculator reports the exact average needed in remaining unlocked credits, live achieved/target differences, percentile benchmarks, and clear impossibility/data-coverage states. All planner inputs are saved only in browser localStorage. Use **Reset planned grades** to release non-completed pinned grades.
 - **Transparency:** Data provenance, partial coverage warnings, and a campus/session coverage explorer. The raw data archive contains 13,162 CSV files and 489,852 rows; its latest represented session is **2025W**. Archives need not cover every offered section.
@@ -89,14 +97,14 @@ The repo **intentionally does not include any raw/derived grade dataset** pendin
 
 ### Running the complete data-included ZIP on Windows
 
-If you downloaded **`coursewise-ubc-v0.10.0-with-data.zip`**, extract it. In PowerShell, **change into the inner `coursewise-ubc` folder** containing `package.json`:
+If you downloaded **`coursewise-ubc-v0.11.0-with-data.zip`**, extract it. In PowerShell, **change into the inner `coursewise-ubc` folder** containing `package.json`:
 
 ```powershell
-cd "$HOME\Downloads\coursewise-ubc-v0.10.0-with-data\coursewise-ubc"
+cd "$HOME\Downloads\coursewise-ubc-v0.11.0-with-data\coursewise-ubc"
 npm start
 ```
 
-The ZIP already contains `data/course-index.json.gz`, `data/coverage.json` and `data/metadata.json`; **do not rerun the importer** for this download. If you have an older ZIP, stop its server with Ctrl+C first and start the v0.10.0 build. GitHub's source-only version still requires an import.
+The ZIP already contains `data/course-index.json.gz`, `data/coverage.json` and `data/metadata.json`; **do not rerun the importer** for this download. If you have an older ZIP, stop its server with Ctrl+C first and start the v0.11.0 build. GitHub's source-only version still requires an import.
 
 ## Tests
 

@@ -30,7 +30,14 @@ class MockElement {
   setAttribute(){}
   scrollIntoView(){}
   querySelectorAll(){return [];}
-  querySelector(){return null;}
+  querySelector(selector){
+    if (this.id === 'courseView' && selector === '#instructor-comparison') {
+      const host=this;
+      // A minimal replacement host to exercise delegated events without JSDOM.
+      return {set outerHTML(value){host.innerHTML=value;}};
+    }
+    return null;
+  }
 }
 let sequence=0;
 const storage=new Map();
@@ -83,23 +90,73 @@ test('My Classes restores saved courses and stats after navigating back from ful
   assert.equal(state.get('courseCount').textContent,1);
 });
 
-test('course reports show the new instructor bar chart and explain term-matched comparison',async()=>{
+test('instructor list prioritizes full section reports; comparison is secondary and two-way',async()=>{
   const state=await mount('/course','?campus=UBCV&subject=ACAM&course=300');
   const html=state.get('courseView').innerHTML;
-  assert.match(html,/instructor-dist-svg/);
-  assert.match(html,/instructor-dist-bar/);
+  assert.match(html,/Instructor section histories/);
+  assert.match(html,/View full report →/);
+  assert.match(html,/data-instructor-name="Prof Example"/);
+  assert.match(html,/Compare selected \(0\/2\)/);
+  assert.doesNotMatch(html,/instructor-dist-svg/); // Optional comparison starts closed.
   assert.match(html,/vs same-term/);
-  assert.match(html,/percentage-point difference/);
   assert.match(html,/history-hover-tooltip/);
   assert.match(html,/section-stats-visible/);
-  assert.match(html,/historical-stat-summary/);
+  assert.match(html,/Highest and lowest course-term averages/);
+  assert.match(html,/Grade spread \(std\. dev\.\)/);
   assert.match(html,/Section median/);
   assert.match(html,/25th percentile/);
-  assert.match(html,/75th percentile/);
   assert.match(html,/Grades ≥ 50%/);
   assert.doesNotMatch(html,/<summary>More section statistics/);
+  // The historical summary must not repeat individual highest/lowest marks.
+  const historical=html.match(/<section class="historical-stat-summary"[\s\S]*?<\/section>/)?.[0] || '';
+  assert.ok(historical);
+  assert.doesNotMatch(historical,/Highest individual mark|Lowest individual mark/);
 });
 
+test('deep-linked instructor full report shows section results and distribution',async()=>{
+  const state=await mount('/course','?campus=UBCV&subject=ACAM&course=300&instructor=Prof%20Example');
+  const html=state.get('courseView').innerHTML;
+  assert.match(html,/id="instructor-report"/);
+  assert.match(html,/INSTRUCTOR SECTION REPORT/);
+  assert.match(html,/Prof Example/);
+  assert.match(html,/Section-by-section results/);
+  assert.match(html,/data-instructor-report-term/);
+  assert.match(html,/Grade spread \(SD\)/);
+  assert.match(html,/grade-distribution-svg/);
+  assert.match(html,/80\.3%/);
+  assert.match(html,/2025W/);
+});
+
+
+test('clicking View full report opens educator section data; closing restores instructor roster',async()=>{
+  const state=await mount('/course','?campus=UBCV&subject=ACAM&course=300');
+  const onClick=state.get('courseView').listeners.get('click');
+  const targetFor=(selector,value)=>({closest:asked=>asked===selector?value:null});
+  onClick({target:targetFor('[data-instructor-report]',{dataset:{instructorReport:'UBCV:ACAM:300',instructorName:'Prof Example'}})});
+  const report=state.get('courseView').innerHTML;
+  assert.match(report,/id="instructor-report"/);
+  assert.match(report,/Grade distribution across these sections/);
+  assert.match(report,/80\.3%/);
+  assert.match(report,/Section-by-section results/);
+  onClick({target:targetFor('[data-instructor-close]',{dataset:{instructorClose:'UBCV:ACAM:300'}})});
+  const restored=state.get('courseView').innerHTML;
+  assert.match(restored,/Instructor section histories/);
+  assert.doesNotMatch(restored,/id="instructor-report"/);
+});
+
+test('optional comparison is initially closed, can be opened, and documents two maximum',async()=>{
+  const state=await mount('/course','?campus=UBCV&subject=ACAM&course=300');
+  const onClick=state.get('courseView').listeners.get('click');
+  assert.doesNotMatch(state.get('courseView').innerHTML,/class="instructor-dist-svg"/);
+  onClick({target:{closest:selector=>selector==='[data-instructor-toggle-compare]'?{dataset:{instructorToggleCompare:'UBCV:ACAM:300'}}:null}});
+  assert.match(state.get('courseView').innerHTML,/Tick one or two instructors/);
+  assert.match(state.get('courseView').innerHTML,/Hide comparison/);
+  assert.match(state.get('courseView').innerHTML,/0 of 2 selected/);
+  const src=(await import('node:fs')).readFileSync(new URL('../assets/app.mjs',import.meta.url),'utf8');
+  assert.match(src,/state\.picks\.length < 2/);
+  assert.match(src,/Maximum two instructors/);
+  assert.doesNotMatch(src,/Maximum three instructors/);
+});
 test('sticky navigation, Grade Goals shortcut and credit explanation are present on all pages',async()=>{
   const {readFileSync}=await import('node:fs');
   const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');

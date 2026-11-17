@@ -388,3 +388,37 @@
 .compare-percentile{font-size:18px;color:#208b69;white-space:nowrap}
 .compare-unavailable{color:#849c95}
 @media(max-width:650px){.comparison-table-rich{min-width:760px}.comparison-table-rich th:first-child,.comparison-table-rich td:first-child{width:185px}.compare-panel{padding:16px}}
+
+/* v0.11 — educator section histories first; two-way comparison is opt-in. */
+.historical-stat-summary .secondary-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr));max-width:810px}
+.instructor-report-link{border:1px solid #b8dfcf;border-radius:8px;padding:9px 12px;background:#eaf8f2;color:#167b5c;font-weight:750;font-size:11px;cursor:pointer;white-space:nowrap}
+.instructor-report-link:hover,.instructor-report-link:focus-visible{background:#d8f2e6;border-color:#68b898}
+.instructor-report-active{background:#f0faf5}
+.instructor-full-report{margin:21px 0 28px;border:1px solid #c9e5d8;background:#fcfffd;border-radius:14px;padding:22px;scroll-margin-top:115px;box-shadow:0 8px 26px rgba(17,93,68,.06)}
+.instructor-report-header{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:14px}
+.instructor-report-header h4{font-size:25px;letter-spacing:-.5px;color:#174a3b;margin:7px 0 5px}
+.instructor-report-header p,.instructor-compare-optional-header p{font-size:12px;color:#668479;line-height:1.6;margin:0}
+.instructor-report-toolbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px;color:#718e83;font-size:12px}
+.instructor-report-toolbar label{display:flex;align-items:center;gap:10px;font-size:12px;font-weight:700;color:#3c7160}
+.instructor-report-toolbar select{border:1px solid #c7dfd4;border-radius:8px;padding:8px 11px;background:#fff;color:#2d5c4b}
+.instructor-report-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:12px 0 21px}
+.instructor-report-metrics>div{border:1px solid #e2ede8;border-radius:9px;background:#f7fbf9;padding:14px;min-width:0}
+.instructor-report-metrics span,.instructor-report-metrics small{display:block;font-size:10px;color:#748e83}
+.instructor-report-metrics strong{display:block;font-size:20px;font-weight:800;color:#205b45;letter-spacing:-.45px;margin:5px 0}
+.instructor-report-distribution{border-top:1px solid #e2eee8;padding-top:18px}
+.instructor-report-distribution h5,.instructor-report-table-heading h5{font-size:15px;margin:0 0 6px;color:#255a46}
+.instructor-report-distribution .grade-svg-scroll{max-width:100%}
+.instructor-report-table-heading{display:flex;justify-content:space-between;align-items:baseline;gap:14px;flex-wrap:wrap;margin:24px 0 11px}
+.instructor-report-table-heading span{font-size:11px;color:#81998e}
+.instructor-report-table{min-width:990px}
+.instructor-report-table td{font-size:12px}
+.instructor-report-table td small{display:block;color:#8ba098;font-size:10px;margin-top:3px}
+.instructor-compare-optional{border-top:1px solid #e5eee9;margin:25px 0 15px;padding-top:22px}
+.instructor-compare-optional-header{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:13px}
+.instructor-compare-optional-header h4{margin:0 0 4px;font-size:17px;color:#254e40}
+.instructor-compare-optional .instructor-compare-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.instructor-compare-optional .instructor-charts-title{margin-bottom:15px}
+.instructor-table th:last-child,.instructor-table td:last-child{text-align:center}
+.section-stats-visible .secondary-stat-grid small{display:block;font-size:10px;line-height:1.45;color:#899d94;margin-top:5px}
+@media(max-width:900px){.instructor-report-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.instructor-compare-optional .instructor-compare-grid{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:560px){.instructor-full-report{padding:13px}.instructor-report-header{flex-direction:column}.instructor-report-metrics strong{font-size:17px}.historical-stat-summary .secondary-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.instructor-compare-optional-header{align-items:flex-start;flex-direction:column}}

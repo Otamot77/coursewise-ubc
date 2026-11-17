@@ -2,7 +2,7 @@ import { parseSchedule, normalizeSavedCourses, courseKey, courseLabel } from '..
 import { parseWorkdayXlsx } from '../lib/workday-xlsx.mjs';
 import { normalizeProfile, fmtPercent, historyRange, recentChange, GRADE_BANDS, GPA_EQUIVALENCIES, gpaEquivalency, aggregateDistributions, validApiPath } from '../lib/grades.mjs';
 import { calculateGradePlan, chooseDistribution, DEFAULT_CREDITS, validCredits, validGrade } from '../lib/planner.mjs';
-import { compareInstructors, availableInstructorTerms } from '../lib/instructors.mjs';
+import { compareInstructors, availableInstructorTerms, instructorReport } from '../lib/instructors.mjs';
 import { courseComparison } from '../lib/comparison.mjs';
 import { gradeDistributionSvg, historyTrendSvg, compactTrendSvg, instructorDistributionSvg } from '../lib/charts.mjs';
 
@@ -199,27 +199,53 @@ function renderDistribution(profile, key) {
         <div><span>Lowest individual mark</span><strong>${fmtPercent(aggregate.low)}</strong></div>
         <div><span>25th percentile</span><strong>${fmtPercent(single?.p25)}</strong></div>
         <div><span>75th percentile</span><strong>${fmtPercent(single?.p75)}</strong></div>
-        <div><span>Standard deviation</span><strong>${single?.stdDev != null ? single.stdDev.toFixed(1) + ' pt' : '—'}</strong></div>
+        <div><span title="How widely marks vary around the section average, measured in percentage points. For example, 12 pt indicates substantial spread around the mean.">Grade spread (std. dev.) ⓘ</span><strong>${single?.stdDev != null ? single.stdDev.toFixed(1) + ' pt' : '—'}</strong><small>${single ? 'Only published in some older section records' : 'Choose one section; not aggregated'}</small></div>
         <div><span>${aggregate.passRateSource === 'grade-bands' ? 'Grades ≥ 50%' : 'Pass rate (graded)'}</span><strong>${rate}</strong><small>${aggregate.passRateSource === 'grade-bands' ? 'From all 11 published grade bands' : aggregate.passRateSource === 'status' ? 'Explicit legacy pass/fail counts' : 'Not available for incomplete bins'}</small></div>
       </div>
-      <p class="detail-copy">Quartiles and standard deviation are published for individual sections only. Newer Tableau v2 records include quartiles but not standard deviation. Pass share uses explicit older PAIR totals where available, or the proportion of published grades ≥50% only when all eleven grade bands are complete. A dash means unavailable, not zero.</p>
+      <p class="detail-copy">Standard deviation describes how widely individual marks vary around the section mean (in percentage points); a 12 pt spread means grades vary substantially. Older PAIR/Tableau records sometimes publish it, but newer Tableau v2 records generally provide quartiles instead. These statistics are only meaningful for an individual section, not an aggregate of section summaries. Pass share uses explicit older PAIR totals where available, or the proportion of published grades ≥50% only when all eleven grade bands are complete. A dash means unavailable, not zero.</p>
     </section>
     ${status ? `<div class="status-breakdown">Historical standing counts: ${status}</div>` : ''}
     <p class="detail-copy">Source: ${escapeHTML(source)}. ${aggregate.reported != null ? `Student count: ${escapeHTML(aggregate.sizeLabel.toLowerCase())}. ` : ''}${profile.coverage?.limitedSectionHistory ? 'The local index retains only the 120 newest section records; older semesters may be incomplete. ' : ''}${chosen.length > 1 ? 'Aggregated counts include only the available sections shown for this session; individual section summaries should be used for median and quartiles. ' : ''}Counts cover source grade categories, not a guaranteed current enrollment or an exact GPA distribution.</p>
   </div>`;
 }
 
+function renderInstructorSectionReport(profile, key, state) {
+  if (!state.reportName) return '';
+  const report = instructorReport(profile, state.reportName, state.reportTerm || 'all');
+  if (!report) return '<p class="notice-text">This educator does not have section records in the requested term.</p>';
+  const aggregate = aggregateDistributions(report.rows);
+  const dist = aggregate ? gradeDistributionSvg(aggregate.bins, `${report.name}: published student counts by grade range`) : '<p class="notice-text">No grade distribution for these sections.</p>';
+  const termOptions = report.terms.map(t=>`<option value="${escapeHTML(t)}" ${t===state.reportTerm?'selected':''}>${escapeHTML(t)}</option>`).join('');
+  const partial = !aggregate?.fullyPublished;
+  const rows = report.rows.map(row => {
+    const quartiles = row.p25 == null && row.p75 == null ? '—' : `${fmtPercent(row.p25)} / ${fmtPercent(row.p75)}`;
+    return `<tr><td><strong>${escapeHTML(row.yearsession)}</strong></td><td>${escapeHTML(row.section)}</td><td><strong>${fmtPercent(row.average)}</strong></td><td>${fmtCount(row.reported)}<small>${escapeHTML(row.reportedKind || 'Students')}</small></td><td>${fmtPercent(row.median)}</td><td>${quartiles}</td><td>${row.stdDev == null ? '—' : `${row.stdDev.toFixed(1)} pt`}</td><td>${fmtPercent(row.high)} / ${fmtPercent(row.low)}</td><td>${row.educators?.length>1?'Shared record':'Named record'}</td></tr>`;
+  }).join('');
+  return `<section class="instructor-full-report" id="instructor-report" aria-labelledby="instructor-report-heading">
+    <div class="instructor-report-header"><div><span class="section-index">INSTRUCTOR SECTION REPORT</span><h4 id="instructor-report-heading">${escapeHTML(report.name)}</h4><p>Published sections attributed to this educator. Sections shared with other named educators may appear in more than one person's report.</p></div><button class="outline-btn" type="button" data-instructor-close="${escapeHTML(key)}">Close report</button></div>
+    <div class="instructor-report-toolbar"><label>Academic session <select data-instructor-report-term="${escapeHTML(key)}"><option value="all" ${state.reportTerm==='all'?'selected':''}>All retained sessions</option>${termOptions}</select></label><span>${report.sections} attributed section${report.sections===1?'':'s'}${report.shared?` · ${report.shared} shared`:''}</span></div>
+    <div class="instructor-report-metrics"><div><span>Section mean</span><strong>${fmtPercent(report.mean)}</strong><small>${escapeHTML(report.method)}</small></div><div><span>Graded sections</span><strong>${report.graded} / ${report.sections}</strong></div><div><span>${report.partialSizes?'Known student count ≥':'Reported / enrolled total'}</span><strong>${fmtCount(report.sizeTotal)}</strong></div><div><span>Section mean range</span><strong>${fmtPercent(report.low)}–${fmtPercent(report.high)}</strong></div></div>
+    <div class="instructor-report-distribution"><h5>Grade distribution across these sections</h5>${dist}<p class="detail-copy">${partial?'Some bins are withheld or unavailable: displayed counts may be lower bounds.':'All published grade-range bins are available for these sections.'} This combines recorded grade counts only, not individual student records. ${report.totalFromArchive > report.sections ? 'Filter excludes some of this educator’s retained sections. ' : ''}</p></div>
+    <div class="instructor-report-table-heading"><h5>Section-by-section results</h5><span>Median, quartiles and standard deviation belong to individual sections only</span></div>
+    <div class="instructor-scroll"><table class="instructor-table instructor-report-table"><thead><tr><th>Term</th><th>Section</th><th>Mean</th><th>Students</th><th>Median</th><th>25th / 75th</th><th>Grade spread (SD)</th><th>High / low</th><th>Attribution</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <p class="instructor-disclaimer">A standard deviation of 12 pt means individual marks have a spread of about 12 percentage points around the section average; it is not a percentage of the mean. Newer UBC Tableau v2 releases generally do not publish this field, so a dash is expected. Names in the archive may represent instructors, TAs or other listed instructional staff. ${profile.coverage?.limitedSectionHistory?'The archive index retains only the newest 120 section records for this course, so older educator history is not exhaustive.':''}</p>
+  </section>`;
+}
+
 function renderInstructorComparison(profile, key) {
   if (!profile) return '';
   const terms = availableInstructorTerms(profile);
-  if (!terms.length) return `<section class="instructor-panel" id="instructor-comparison"><div class="instructor-head"><h3>Compare recorded instructors</h3><p>No section-level instructor attribution is available from this course's data source. A teaching-team name by itself cannot be used to calculate an instructor average.</p></div></section>`;
-  const state = instructorSelections.get(key) || { period:'recent', sort:'sections', query:'', picks:[], showAll:false };
+  if (!terms.length) return `<section class="instructor-panel" id="instructor-comparison"><div class="instructor-head"><h3>Instructor section histories</h3><p>No section-level educator names are available from this course's data source. Teaching-team listings alone cannot support section-grade comparisons.</p></div></section>`;
+  const linked = page === 'course' ? new URLSearchParams(location.search).get('instructor') : null;
+  const state = instructorSelections.get(key) || { period:'recent', sort:'sections', query:'', picks:[], showAll:false, showCompare:false, reportName:linked?.slice(0,120) || null, reportTerm:'all' };
   if (!(state.period === 'all' || state.period === 'recent' || terms.includes(state.period))) state.period='recent';
   const results = compareInstructors(profile, state.period);
   const all = results.instructors;
   const validNames = new Set(all.map(x => x.name));
-  state.picks = state.picks.filter(x => validNames.has(x));
-  if (!state.initialized) { state.picks=all.slice(0,2).map(x=>x.name); state.initialized=true; }
+  state.picks = state.picks.filter(x => validNames.has(x)).slice(0,2);
+  const savedReport = state.reportName && instructorReport(profile,state.reportName,'all');
+  if (savedReport) state.reportName=savedReport.name;
+  else {state.reportName=null;state.reportTerm='all';}
   instructorSelections.set(key,state);
   const active = state.picks.map(name => all.find(x => x.name === name)).filter(Boolean);
   let filtered = all.filter(x => x.name.toLocaleLowerCase('en-CA').includes(state.query.toLocaleLowerCase('en-CA')));
@@ -229,29 +255,28 @@ function renderInstructorComparison(profile, key) {
   const shown = state.showAll || state.query ? filtered : filtered.slice(0,10);
   const termOpts = terms.map(term=>`<option value="${escapeHTML(term)}" ${state.period===term?'selected':''}>${escapeHTML(term)}</option>`).join('');
   const periodText = state.period==='recent' ? 'Most recent five academic years represented in retained sections' : state.period==='all' ? 'All retained sections' : state.period;
-  const table = shown.length ? `<div class="instructor-scroll"><table class="instructor-table"><thead><tr><th>Compare</th><th>Recorded educator</th><th>Graded sections</th><th>Section mean</th><th title="Difference in percentage points between instructor-attributed section means and all course sections from the academic terms taught">vs same-term<br/>sections</th><th>Latest</th><th>Students*</th></tr></thead><tbody>${shown.map(group=>{
+  const table = shown.length ? `<div class="instructor-scroll"><table class="instructor-table"><thead><tr><th>Recorded educator</th><th>Graded sections</th><th>Section mean</th><th title="Percentage-point difference versus all course sections from the same academic terms">vs same-term<br/>sections</th><th>Latest</th><th>Students*</th><th>Section history</th><th>Compare</th></tr></thead><tbody>${shown.map(group=>{
     const selected = state.picks.includes(group.name);
     const delta = group.difference==null ? '—' : `${group.difference>0?'+':''}${group.difference.toFixed(1)}%`;
-    return `<tr class="${selected?'instructor-selected':''}"><td><input type="checkbox" data-instructor-pick="${escapeHTML(key)}" value="${escapeHTML(group.name)}" aria-label="Compare ${escapeHTML(group.name)}" ${selected?'checked':''} ${!selected && state.picks.length>=3?'disabled title="Maximum three instructors"':''}/></td><td><strong>${escapeHTML(group.name)}</strong>${group.shared?`<small>${group.shared} shared section${group.shared===1?'':'s'}</small>`:''}</td><td>${group.graded} / ${group.sections}${group.graded<2?'<small>Limited sample</small>':''}</td><td><strong>${fmtPercent(group.average)}</strong><small>${group.method.startsWith('student')?'weighted':'unweighted'}</small></td><td class="${group.difference!=null && group.difference>=0?'delta-positive':'delta-negative'}" title="Percentage-point difference from course sections taught in those same academic terms">${delta}</td><td>${escapeHTML(group.latest||'—')}</td><td>${group.students==null?'—':`${group.partialStudents?'≥ ':''}${fmtCount(group.students)}`}</td></tr>`;
-  }).join('')}</tbody></table></div>` : '<p class="notice-text">No educator names match that search in the selected period.</p>';
-  // Both charts use the same Y-axis maximum so their heights can be compared.
+    return `<tr class="${state.reportName===group.name?'instructor-report-active':''}"><td><strong>${escapeHTML(group.name)}</strong>${group.shared?`<small>${group.shared} shared section${group.shared===1?'':'s'}</small>`:''}</td><td>${group.graded} / ${group.sections}${group.graded<2?'<small>Limited sample</small>':''}</td><td><strong>${fmtPercent(group.average)}</strong><small>${group.method.startsWith('student')?'weighted':'unweighted'}</small></td><td class="${group.difference!=null && group.difference>=0?'delta-positive':'delta-negative'}" title="Percentage-point difference versus the course in matching academic terms">${delta}</td><td>${escapeHTML(group.latest||'—')}</td><td>${group.students==null?'—':`${group.partialStudents?'≥ ':''}${fmtCount(group.students)}`}</td><td><button class="instructor-report-link" type="button" data-instructor-report="${escapeHTML(key)}" data-instructor-name="${escapeHTML(group.name)}">View full report →</button></td><td><input type="checkbox" data-instructor-pick="${escapeHTML(key)}" value="${escapeHTML(group.name)}" aria-label="Compare ${escapeHTML(group.name)}" ${selected?'checked':''} ${!selected && state.picks.length>=2?'disabled title="Maximum two instructors"':''}/></td></tr>`;
+  }).join('')}</tbody></table></div>` : '<p class="notice-text">No recorded educator names match that search in this academic period.</p>';
+  const report = renderInstructorSectionReport(profile,key,state);
   const maxBar = Math.max(1,...active.flatMap(g=>g.distribution.percentages||[]));
   const comparisons = active.length ? `<div class="instructor-compare-grid">${active.map(group=>{
     const dist=group.distribution;
     const chart=dist.percentages ? instructorDistributionSvg(dist.percentages,dist.counts,{
       scaleMax:maxBar,title:`${group.name} grade distribution, percentage of published student outcomes`
     }) : '<div class="instructor-no-bars">No complete published section-grade distributions for this educator in this period.</div>';
-    return `<article class="instructor-compare-card"><div class="instructor-compare-top"><strong>${escapeHTML(group.name)}</strong><span>${group.graded} graded section${group.graded===1?'':'s'}</span></div><div class="instructor-compare-metrics"><div><small>Section mean</small><b>${fmtPercent(group.average)}</b></div><div><small>Mean range</small><b>${fmtPercent(group.low)}–${fmtPercent(group.high)}</b></div></div>${chart}<p class="detail-copy">${dist.percentages?`${fmtCount(dist.total)} published grade outcomes across ${dist.sections} complete section${dist.sections===1?'':'s'}`:`0 complete sections`}; ${group.sections-dist.sections} section${group.sections-dist.sections===1?'':'s'} omitted from the distribution for missing or withheld grade bins. ${group.shared?'Some sections are shared with other listed educators.':''}</p></article>`;
-  }).join('')}</div>` : '<p class="notice-text">Choose up to three educators in the table to compare their published grade distributions.</p>';
-  const evidence = active.flatMap(group=>group.rows.map(row=>({name:group.name,row}))).slice(0,45);
-  const evidenceTable = evidence.length ? `<details class="detail-collapse"><summary>See section-by-section evidence (${evidence.length}${active.reduce((n,g)=>n+g.rows.length,0)>45?'+':''} rows shown)</summary><div class="instructor-scroll"><table class="instructor-table"><thead><tr><th>Educator</th><th>Term</th><th>Section</th><th>Average</th><th>Students</th><th>Attribution</th></tr></thead><tbody>${evidence.map(({name,row})=>`<tr><td>${escapeHTML(name)}</td><td>${escapeHTML(row.yearsession)}</td><td>${escapeHTML(row.section)}</td><td>${fmtPercent(row.average)}</td><td>${fmtCount(row.reported)}</td><td>${row.educators?.length>1?'Shared teaching-team listing':'Sole named educator'}</td></tr>`).join('')}</tbody></table></div></details>`:'';
-  return `<section class="instructor-panel" id="instructor-comparison" aria-labelledby="instructor-title"><div class="instructor-head"><div><span class="section-index">INSTRUCTOR INSIGHTS</span><h3 id="instructor-title">Compare recorded instructors</h3><p>Compare historical sections attributed to each named educator, not instructor ratings or forecasts. <strong>${results.instructors.length}</strong> named educators in ${results.sections} retained section records (${results.unassigned} without names).</p></div><span class="soft-pill">HISTORICAL RECORDS</span></div>
-    <div class="instructor-controls"><label>Academic period<select data-instructor-period="${escapeHTML(key)}"><option value="recent" ${state.period==='recent'?'selected':''}>Recent five years</option><option value="all" ${state.period==='all'?'selected':''}>All retained years</option>${termOpts}</select></label><label>Search educators<input type="search" data-instructor-query="${escapeHTML(key)}" placeholder="Type an instructor name…" value="${escapeHTML(state.query)}"/></label><label>Sort educators<select data-instructor-sort="${escapeHTML(key)}"><option value="sections" ${state.sort==='sections'?'selected':''}>Most graded sections</option><option value="mean" ${state.sort==='mean'?'selected':''}>Highest section mean</option><option value="latest" ${state.sort==='latest'?'selected':''}>Most recent section</option><option value="name" ${state.sort==='name'?'selected':''}>Name A–Z</option></select></label></div>
-    <p class="instructor-caption">${escapeHTML(periodText)} · Tick up to three educators. A section with multiple named educators contributes to each name; comparisons are not independent for shared classes. Higher averages do not demonstrate that an educator causes higher grades.</p>
+    return `<article class="instructor-compare-card"><div class="instructor-compare-top"><strong>${escapeHTML(group.name)}</strong><span>${group.graded} graded section${group.graded===1?'':'s'}</span></div><div class="instructor-compare-metrics"><div><small>Section mean</small><b>${fmtPercent(group.average)}</b></div><div><small>Mean range</small><b>${fmtPercent(group.low)}–${fmtPercent(group.high)}</b></div></div>${chart}<p class="detail-copy">${dist.percentages?`${fmtCount(dist.total)} published grade outcomes across ${dist.sections} complete section${dist.sections===1?'':'s'}`:'No fully published sections'}; ${group.sections-dist.sections} section${group.sections-dist.sections===1?'':'s'} omitted for unavailable bins. ${group.shared?'Some sections are shared with other recorded educators.':''}</p></article>`;
+  }).join('')}</div>` : '<p class="notice-text">Tick one or two instructors above to compare grade distributions.</p>';
+  return `<section class="instructor-panel" id="instructor-comparison" aria-labelledby="instructor-title"><div class="instructor-head"><div><span class="section-index">INSTRUCTOR INSIGHTS</span><h3 id="instructor-title">Instructor section histories</h3><p><strong>${results.instructors.length}</strong> recorded educator names in ${results.sections} retained section records (${results.unassigned} without names). Open any instructor's full section report; comparisons are optional.</p></div><span class="soft-pill">HISTORICAL RECORDS</span></div>
+    <div class="instructor-controls"><label>Academic period<select data-instructor-period="${escapeHTML(key)}"><option value="recent" ${state.period==='recent'?'selected':''}>Recent five years</option><option value="all" ${state.period==='all'?'selected':''}>All retained years</option>${termOpts}</select></label><label>Search educators<input type="search" data-instructor-query="${escapeHTML(key)}" placeholder="Type a name…" value="${escapeHTML(state.query)}"/></label><label>Sort educators<select data-instructor-sort="${escapeHTML(key)}"><option value="sections" ${state.sort==='sections'?'selected':''}>Most graded sections</option><option value="mean" ${state.sort==='mean'?'selected':''}>Highest section mean</option><option value="latest" ${state.sort==='latest'?'selected':''}>Most recent section</option><option value="name" ${state.sort==='name'?'selected':''}>Name A–Z</option></select></label></div>
+    <p class="instructor-caption">${escapeHTML(periodText)} · View full reports for individual section results. Some sections are attributed to multiple named educators and should not be considered independent observations.</p>
     ${table}
     ${!state.query && filtered.length>10?`<button class="instructor-more" data-instructor-more="${escapeHTML(key)}">${state.showAll?'Show fewer':'Show all '+filtered.length+' educators'}</button>`:''}
-    <div class="instructor-charts-title"><h4>Side-by-side distributions</h4><span>${active.length} of 3 selected · percentages, not raw counts</span></div>${comparisons}${evidenceTable}
-    <p class="instructor-disclaimer">* “Students” is a sum of source Enrolled/Reported counts attached to graded sections, not a count of unique students. Grade distribution comparisons use only fully published bins and share a common vertical scale. Section averages are student-weighted only when all contributing section sizes are published; otherwise they are unweighted. The same-term comparison is a percentage-point difference between recorded section means, not a relative percent change or an instructor effect. ${results.truncated?'This index retains only the 120 newest sections for high-volume courses; older instructor histories are incomplete. ':''}Names can include teaching assistants or other instructional staff in older source files. Missing sections, naming variants, and section structure limit comparability.</p>
+    ${report}
+    <section class="instructor-compare-optional" aria-label="Optional instructor comparison"><div class="instructor-compare-optional-header"><div><h4>Compare two instructors</h4><p>Optional: compare normalized grade distributions side by side for the selected period.</p></div><button class="outline-btn" type="button" data-instructor-toggle-compare="${escapeHTML(key)}">${state.showCompare?'Hide comparison':'Compare selected ('+active.length+'/2)'}</button></div>${state.showCompare?`<div class="instructor-charts-title"><span>${active.length} of 2 selected · percentages, not raw counts</span></div>${comparisons}`:''}</section>
+    <p class="instructor-disclaimer">* Students is the sum of reported/enrolled section counts, not unique students across repeated terms. Section mean weights by section size only when all sizes are available. Grade distributions include only sections with all eleven published bins. Instructor attribution is historical, sometimes includes TAs, and does not establish teaching quality or causation. ${results.truncated?'The archive retains only the 120 newest section records for very large courses.':''}</p>
   </section>`;
 }
 
@@ -295,7 +320,7 @@ function renderCourse(c, standalone = false) {
   const warnings=partial ? `<div class="data-warning">${partial} recorded term${partial===1?'':'s'} contain unpublished section averages; term means use only available entries.</div>` : '';
   const details=`<div class="course-detail">
     ${renderDistribution(profile,key)}
-    <section class="historical-stat-summary" id="more-historical-stats" aria-label="Historical highs and lows"><div class="section-stats-title"><h4>Historical highs and lows</h4><span>Across published course records</span></div><div class="secondary-stat-grid"><div><span>Highest course-term mean</span><strong>${fmtPercent(profile?.high)}</strong></div><div><span>Lowest course-term mean</span><strong>${fmtPercent(profile?.low)}</strong></div><div><span>Highest individual mark</span><strong>${fmtPercent(profile?.highMark)}</strong></div><div><span>Lowest individual mark</span><strong>${fmtPercent(profile?.lowMark)}</strong></div></div></section>
+    <section class="historical-stat-summary" id="more-historical-stats" aria-label="Historical course-average extremes"><div class="section-stats-title"><h4>Highest and lowest course-term averages</h4><span>Across published academic sessions</span></div><div class="secondary-stat-grid"><div><span>Highest course-term mean</span><strong>${fmtPercent(profile?.high)}</strong></div><div><span>Lowest course-term mean</span><strong>${fmtPercent(profile?.low)}</strong></div></div></section>
     ${renderInstructorComparison(profile,key)}
     ${warnings}${related}
     <details class="detail-collapse"><summary>Historical sections (up to 20 shown)</summary>${sectionTable}<p class="detail-copy">Historical section identifiers and teaching assignments may differ today.</p></details>
@@ -306,7 +331,7 @@ function renderCourse(c, standalone = false) {
     <div class="course-head"><div class="course-logo">${escapeHTML(c.subject)}</div><div class="course-title-block"><strong>${escapeHTML(courseLabel(c))}</strong><small>${escapeHTML(profile?.title||'Historical course overview')}${section}</small></div><button class="outline-btn add-explored" type="button" data-add-explored="${escapeHTML(key)}">Save to My Classes +</button></div>
     <div class="course-data-availability">${status}${coverageHint}</div>
     ${renderCourseOverview(profile)}
-    ${profile?.recentSections?.length ? '<nav class="course-quicklinks" aria-label="Course report sections"><a href="#course-distribution">Grade distribution ↓</a><a href="#instructor-comparison">Compare instructors ↓</a></nav>' : ''}
+    ${profile?.recentSections?.length ? '<nav class="course-quicklinks" aria-label="Course report sections"><a href="#course-distribution">Grade distribution ↓</a><a href="#instructor-comparison">Instructor section reports ↓</a></nav>' : ''}
     ${details}
   </article>`;
 }
@@ -472,6 +497,10 @@ function renderDedicated() {
   $('courseViewStatus').hidden = !loading.has(key) && !error;
   $('courseViewStatus').textContent = error ? `Could not load historical data: ${error}` : 'Loading historical grades…';
   $('courseView').innerHTML = renderCourse(detailedCourse, true);
+  if (window.location.hash === '#instructor-report') {
+    const report = $('courseView').querySelector('#instructor-report');
+    if (report) queueMicrotask(() => report.scrollIntoView?.({block:'start'}));
+  }
   document.title = `${courseLabel(detailedCourse)} · Coursewise`;
 }
 async function browseCatalog() {
@@ -519,17 +548,18 @@ $('courseCards').addEventListener('change',changeDistributionFilter);
 $('courseView').addEventListener('change',changeDistributionFilter);
 function updateInstructorPanel(event) {
   const input = event.target;
-  const key = input.dataset.instructorPeriod || input.dataset.instructorSort || input.dataset.instructorQuery || input.dataset.instructorPick;
+  const key = input.dataset.instructorPeriod || input.dataset.instructorSort || input.dataset.instructorQuery || input.dataset.instructorPick || input.dataset.instructorReportTerm;
   if (!key || !detailedCourse || courseKey(detailedCourse) !== key) return false;
   const state = instructorSelections.get(key);
   if (!state) return false;
-  if (input.dataset.instructorPeriod) { state.period=input.value; state.initialized=false; state.query=''; }
+  if (input.dataset.instructorPeriod) { state.period=input.value; state.query=''; state.picks=[]; state.showCompare=false; }
   if (input.dataset.instructorSort) state.sort=input.value;
   if (input.dataset.instructorQuery) state.query=input.value.slice(0,100);
   if (input.dataset.instructorPick) {
-    if (input.checked && state.picks.length < 3 && !state.picks.includes(input.value)) state.picks.push(input.value);
+    if (input.checked && state.picks.length < 2 && !state.picks.includes(input.value)) state.picks.push(input.value);
     else if (!input.checked) state.picks=state.picks.filter(p=>p!==input.value);
   }
+  if (input.dataset.instructorReportTerm) state.reportTerm=input.value;
   const current = $('courseView').querySelector('#instructor-comparison');
   if (!current) return true;
   const profile=profiles.get(key);
@@ -542,9 +572,36 @@ function updateInstructorPanel(event) {
 }
 $('courseView').addEventListener('input',e=>{ if(e.target.dataset.instructorQuery)updateInstructorPanel(e); });
 $('courseView').addEventListener('change',e=>{
-  if(e.target.dataset.instructorPeriod || e.target.dataset.instructorSort || e.target.dataset.instructorPick)updateInstructorPanel(e);
+  if(e.target.dataset.instructorPeriod || e.target.dataset.instructorSort || e.target.dataset.instructorPick || e.target.dataset.instructorReportTerm)updateInstructorPanel(e);
 });
 $('courseView').addEventListener('click',e=>{
+  const openReport = e.target.closest('[data-instructor-report]');
+  if (openReport && detailedCourse && openReport.dataset.instructorReport===courseKey(detailedCourse)) {
+    const key=openReport.dataset.instructorReport;
+    const state=instructorSelections.get(key);
+    const report=instructorReport(profiles.get(key),openReport.dataset.instructorName,'all');
+    if (state && report) {
+      state.reportName=report.name;state.reportTerm='all';
+      const current=$('courseView').querySelector('#instructor-comparison');
+      if (current) current.outerHTML=renderInstructorComparison(profiles.get(key),key);
+      const url=new URLSearchParams({campus:detailedCourse.campus,subject:detailedCourse.subject,course:detailedCourse.course,instructor:report.name});
+      window.history?.replaceState?.(null,'',`/course?${url}#instructor-report`);
+      $('courseView').querySelector('#instructor-report')?.scrollIntoView?.({behavior:'smooth',block:'start'});
+    }
+    return;
+  }
+  const closeReport = e.target.closest('[data-instructor-close]')?.dataset.instructorClose;
+  if (closeReport && detailedCourse && closeReport===courseKey(detailedCourse)) {
+    const state=instructorSelections.get(closeReport);
+    if(state){state.reportName=null;state.reportTerm='all';const current=$('courseView').querySelector('#instructor-comparison');if(current)current.outerHTML=renderInstructorComparison(profiles.get(closeReport),closeReport);window.history?.replaceState?.(null,'',courseUrl(detailedCourse)+'#instructor-comparison');}
+    return;
+  }
+  const toggleCompare = e.target.closest('[data-instructor-toggle-compare]')?.dataset.instructorToggleCompare;
+  if (toggleCompare && detailedCourse && toggleCompare===courseKey(detailedCourse)) {
+    const state=instructorSelections.get(toggleCompare);
+    if(state){state.showCompare=!state.showCompare;const current=$('courseView').querySelector('#instructor-comparison');if(current)current.outerHTML=renderInstructorComparison(profiles.get(toggleCompare),toggleCompare);}
+    return;
+  }
   const more = e.target.closest('[data-instructor-more]')?.dataset.instructorMore;
   if (more && detailedCourse && more === courseKey(detailedCourse)) {
     const state=instructorSelections.get(more);if(state){state.showAll=!state.showAll;const current=$('courseView').querySelector('#instructor-comparison');if(current)current.outerHTML=renderInstructorComparison(profiles.get(more),more);}return;

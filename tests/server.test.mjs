@@ -142,7 +142,7 @@ test('course reports use explicit SVG histograms and saved lineups show compact 
   const body=await app.text();
   assert.match(body,/function renderCourseOverview/);
   assert.match(body,/lineup-highlights/);
-  assert.match(body,/Historical highs and lows/);
+  assert.match(body,/Highest and lowest course-term averages/);
 });
 
 test('data source and footer distinguish UBC publication from community archive',async()=>{

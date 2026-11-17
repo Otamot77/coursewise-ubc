@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { GRADE_BANDS } from '../lib/grades.mjs';
-import { availableInstructorTerms, compareInstructors, instructorPeriod } from '../lib/instructors.mjs';
+import { availableInstructorTerms, compareInstructors, instructorPeriod, instructorReport } from '../lib/instructors.mjs';
 
 const counts = (n=0) => Object.fromEntries(GRADE_BANDS.map(b => [b.key, n]));
 const section = (yearsession, code, average, size, educators, distribution=counts(10)) => ({
@@ -65,4 +65,38 @@ test('empty or upstream API profile produces no invented instructor stats',()=>{
  assert.deepEqual(compareInstructors(null).instructors,[]);
  assert.deepEqual(compareInstructors({teachingTeam:[{name:'Ada'}]}).instructors,[]);
  assert.deepEqual(instructorPeriod([]),[]);
+});
+
+
+test('full instructor section reports contain retained rows independent of comparison period',()=>{
+ const p={recentSections:[
+  {...section('2025W','101',70,100,['Ada','Bert']),median:72,p25:61,p75:83,stdDev:null},
+  {...section('2019W','101',65,50,['Ada']),median:null,p25:null,p75:null,stdDev:12.4},
+  section('2025W','102',80,60,['Bert'])
+ ]};
+ const full=instructorReport(p,'ada');
+ assert.equal(full.name,'Ada');
+ assert.equal(full.sections,2);
+ assert.equal(full.graded,2);
+ assert.equal(full.shared,1);
+ assert.equal(full.sizeTotal,150);
+ assert.deepEqual(full.terms,['2025W','2019W']);
+ assert.ok(full.rows.some(r=>r.stdDev===12.4));
+ assert.deepEqual(full.history.map(h=>h.session),['2019W','2025W']);
+ assert.ok(Math.abs(full.mean-(70*100+65*50)/150)<1e-6);
+ const term=instructorReport(p,'Ada','2025W');
+ assert.equal(term.sections,1);
+ assert.equal(term.mean,70);
+ assert.equal(term.totalFromArchive,2);
+ assert.equal(instructorReport(p,'Ada','2023W'),null);
+ assert.equal(instructorReport(p,'Unknown'),null);
+});
+
+test('instructor report with withheld grades retains section but excludes incomplete histogram',()=>{
+ const partial={...counts(2), '80-84':null};
+ const r=instructorReport({recentSections:[section('2025W','101',75,40,['Ada'],partial)]},'Ada');
+ assert.equal(r.sections,1);
+ assert.equal(r.distribution.sections,0);
+ assert.equal(r.distribution.percentages,null);
+ assert.equal(r.distribution.total,0);
 });
