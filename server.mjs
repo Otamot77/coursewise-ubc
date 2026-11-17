@@ -118,14 +118,16 @@ const server = http.createServer(async (req, res) => {
     if (!localIndex) return sendJSON(res, 404, { error: 'Course catalog needs the locally imported PAIR dataset. See README for import instructions.' });
     const campus = url.searchParams.get('campus') || 'UBCV';
     const subject = (url.searchParams.get('subject') || '').trim().toUpperCase();
+    const subjectPrefix = (url.searchParams.get('subjectPrefix') || '').trim().toUpperCase();
+    const level = url.searchParams.get('level') || '';
     const q = (url.searchParams.get('q') || '').trim().toUpperCase().replace(/\s+/g, ' ');
     const sort = url.searchParams.get('sort') || 'recent';
     const pageValue = Number(url.searchParams.get('page') || 1);
-    if (!/^(UBCV|UBCO)$/.test(campus) || (subject && !/^[A-Z]{2,6}$/.test(subject)) || q.length > 80 ||
+    if (!/^(UBCV|UBCO)$/.test(campus) || (subject && !/^[A-Z]{2,6}$/.test(subject)) || (subjectPrefix && !/^[A-Z]{1,6}$/.test(subjectPrefix)) || !['', '100','200','300','400','500','600'].includes(level) || q.length > 80 ||
         !['recent', 'name', 'average'].includes(sort) || !Number.isInteger(pageValue) || pageValue < 1 || pageValue > 10000) {
       return sendJSON(res, 400, { error: 'Invalid catalog filters.' });
     }
-    const filtered = catalog.filter(x => x.campus === campus && (!subject || x.subject === subject) &&
+    const filtered = catalog.filter(x => x.campus === campus && (!subject || x.subject === subject) && (!subjectPrefix || x.subject.startsWith(subjectPrefix)) && (!level || (level === '600' ? Number(x.course.slice(0,3)) >= 600 : Math.floor(Number(x.course.slice(0,3)) / 100) * 100 === Number(level))) &&
       (!q || `${x.subject} ${x.course} ${x.subject}${x.course} ${x.title}`.toUpperCase().includes(q) ||
         `${x.subject} ${x.course}`.includes(q.replace(/_/g, ' '))));
     filtered.sort((a, b) => {
@@ -133,7 +135,7 @@ const server = http.createServer(async (req, res) => {
       if (sort === 'average') return (b.average ?? -1) - (a.average ?? -1) || `${a.subject} ${a.course}`.localeCompare(`${b.subject} ${b.course}`);
       return b.latest.localeCompare(a.latest) || `${a.subject} ${a.course}`.localeCompare(`${b.subject} ${b.course}`);
     });
-    const perPage = 24;
+    const perPage = 9;
     return sendJSON(res, 200, {
       page: pageValue, perPage, total: filtered.length, subjects: catalogSubjects[campus],
       results: filtered.slice((pageValue - 1) * perPage, pageValue * perPage)
@@ -150,7 +152,7 @@ const server = http.createServer(async (req, res) => {
     latestDataset: localCoverage?.sessions?.reduce((latest, item) => latest > item.yearsession ? latest : item.yearsession, '') ?? null,
     mode: localIndex ? 'local-first' : 'live'
   });
-  const requested = url.pathname === '/' ? '/index.html' : url.pathname;
+  const requested = ['/', '/my-classes', '/explore', '/course', '/gpa', '/data'].includes(url.pathname) ? '/index.html' : url.pathname;
   let decoded;
   try { decoded = decodeURIComponent(requested); } catch { return sendJSON(res, 400, { error: 'Invalid filename' }); }
   const resolved = path.resolve(root, `.${decoded}`);

@@ -97,3 +97,66 @@
 .gpa-disclaimer a{color:#16825f}
 @media(max-width:950px){.catalog-controls{grid-template-columns:1fr 1fr}.catalog-controls .catalog-query{grid-column:1/-1}.catalog-results{grid-template-columns:repeat(2,minmax(0,1fr))}.desktop-nav{gap:14px}}
 @media(max-width:700px){.catalog-shell{padding:13px}.catalog-controls{grid-template-columns:1fr 1fr}.catalog-controls .catalog-query{grid-column:1/-1}.catalog-results{grid-template-columns:1fr}.gpa-guide-grid{grid-template-columns:1fr}.course-middle.extended{grid-template-columns:repeat(2,minmax(0,1fr))}.distribution-toolbar{flex-direction:column}.distribution-filters{justify-content:flex-start}.section-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.distribution-panel{padding:11px}.distribution-plot{padding:12px}.distribution-row{grid-template-columns:44px minmax(0,1fr) 67px;gap:7px}.catalog-detail .course-head{flex-wrap:wrap}}
+
+/* v0.4: distinct, linkable views. One page is visible at a time. */
+[data-page]:not(.is-active){display:none!important}
+[data-page].is-active{display:block}
+.home-page{padding:88px 0 70px;min-height:calc(100vh - 175px);max-width:1050px}
+.home-page h1{font-size:clamp(42px,6.3vw,76px);line-height:1.05;letter-spacing:-3.5px;color:#173d36;max-width:910px;margin:19px 0}
+.home-page h1 span{color:#3b9877}
+.home-page>p{max-width:700px;font-size:16px;line-height:1.8;color:#6e837f;margin:19px 0 30px}
+.home-search{background:#fff;box-shadow:0 12px 38px rgba(27,70,60,.09);border:1px solid #cfe4d9;border-radius:13px;padding:9px;display:flex;gap:8px;align-items:center;max-width:930px}
+.home-search input{flex:1;min-width:90px;border:0;padding:15px 7px;font-size:16px;color:#25453c;outline:0;background:transparent}
+.home-search:focus-within{outline:3px solid #c7ebd9}
+.home-search-glyph{font-size:26px;color:#418b73;margin-left:12px}
+.home-search select{padding:13px 10px;border:1px solid #e1ebe5;border-radius:8px;background:#f9fcfa;color:#346050;font-size:12px}
+.home-search button{white-space:nowrap;min-height:47px;border-radius:9px}
+.popular-searches{display:flex;flex-wrap:wrap;align-items:center;gap:9px;margin:14px 0 44px;font-size:12px;color:#71918a}
+.popular-searches a{border:1px solid #dcece4;border-radius:7px;padding:7px 11px;background:#f6fbf8;color:#277a5a;text-decoration:none;font-weight:680}
+.popular-searches a:hover{background:#e6f5ed}
+.home-next{display:flex;align-items:center;justify-content:space-between;gap:20px;max-width:930px;background:linear-gradient(112deg,#edf8f2,#f9fcfa);border:1px solid #dbece2;border-radius:13px;padding:24px 27px;margin:0 0 35px}
+.home-next strong{font-size:17px;color:#25443a}
+.home-next p{color:#68847b;font-size:12px;line-height:1.7;margin:7px 0 0}
+.home-next a{white-space:nowrap;text-decoration:none}
+.home-page .trust-line{padding:0;color:#6e9688}
+.workspace-section.is-active,.discover-section.is-active,.gpa-guide-section.is-active,.source-section.is-active,.dedicated-course-page.is-active{padding-top:52px;min-height:calc(100vh - 155px);scroll-margin-top:0}
+.dedicated-course-page{padding-bottom:60px}
+.dedicated-course-page .course-item{border:1px solid #d6e9dd;border-radius:13px;box-shadow:0 14px 40px rgba(21,66,45,.04);background:#fff;padding:26px}
+.dedicated-course-page .course-head .course-title-block strong{font-size:27px;letter-spacing:-.7px}
+.dedicated-course-page .course-detail{margin-top:28px}
+.page-utility{display:flex;justify-content:space-between;align-items:center;margin:0 0 23px}
+.back-link{color:#228561;font-weight:700;font-size:12px;text-decoration:none}
+.back-link:hover{text-decoration:underline}
+.gpa-source-link{color:#258b66;text-decoration:underline;text-underline-offset:2px}
+.gpa-guide-card a,.course-detail a{color:#168363;text-underline-offset:2px}
+.catalog-controls{grid-template-columns:minmax(180px,2.4fr) repeat(4,minmax(120px,1fr));gap:10px}
+.catalog-controls .subject-input{width:100%}
+.catalog-controls input[list]{text-transform:uppercase}
+.catalog-results{grid-template-columns:repeat(3,minmax(0,1fr));max-width:100%}
+.catalog-card{text-decoration:none;min-height:125px;transition:border-color .1s ease,box-shadow .1s ease}
+.catalog-card:focus-visible,.catalog-card:hover{text-decoration:none}
+.catalog-status{font-weight:630}
+.distribution-panel{background:#fdfefd;border-color:#d8e8df;padding:22px}
+.distribution-chart-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:24px 0 0;color:#375d4d;font-size:13px;font-weight:750}
+.distribution-chart-header span:last-child{font-size:11px;color:#7c988e;font-weight:500}
+.grade-chart{display:grid;grid-template-columns:repeat(11,minmax(0,1fr));gap:10px;background:#fff;padding:22px 16px 17px;border:1px solid #e2eee7;border-radius:12px;overflow-x:auto;min-width:0;margin:12px 0 0}
+.grade-chart-col{display:flex;flex-direction:column;align-items:stretch;gap:6px;text-align:center;min-width:35px}
+.grade-chart-count{font-size:11px;line-height:20px;min-height:20px;color:#36765f;font-weight:770}
+.grade-chart-bar-wrap{height:185px;width:100%;background:linear-gradient(180deg,#fff,#f0f8f3);border-bottom:1px solid #cadbd1;display:flex;align-items:flex-end;justify-content:stretch;position:relative;border-radius:5px 5px 0 0;overflow:hidden}
+.grade-bar{display:block;width:100%;border-radius:5px 5px 0 0;background:linear-gradient(180deg,#2eac7e,#7cd3ab);min-height:0;transition:height .15s ease}
+.grade-bar.partial{background:repeating-linear-gradient(45deg,#3fae87,#3fae87 7px,#93d2b5 7px,#93d2b5 14px)}
+.grade-bar.withheld{height:100%;background:repeating-linear-gradient(135deg,#f1f3f3,#f1f3f3 7px,#e3e9e6 7px,#e3e9e6 14px);opacity:.8}
+.grade-chart-band{font-size:11px;font-weight:750;color:#395c52;white-space:nowrap}
+.grade-chart-col small{font-size:10px;color:#849c92}
+.chart-caption{color:#849b90;font-size:11px;line-height:1.65;margin:10px 0 0}
+@media(max-width:1110px){.catalog-controls{grid-template-columns:repeat(3,minmax(0,1fr))}.catalog-controls .catalog-query{grid-column:1/-1}}
+@media(max-width:760px){.desktop-nav{overflow-x:auto;max-width:72vw;gap:14px;scrollbar-width:none}.desktop-nav a{white-space:nowrap;flex:none}.desktop-nav a:nth-child(3){display:block}.home-page{padding:56px 0 50px}.home-page h1{letter-spacing:-2.5px}.home-search{flex-wrap:wrap}.home-search input{flex-basis:calc(100% - 65px)}.home-search select{flex:1}.home-search button{flex:1}.home-next{flex-direction:column;align-items:flex-start}.catalog-controls{grid-template-columns:repeat(2,minmax(0,1fr))}.catalog-controls .catalog-query{grid-column:1/-1}.catalog-results{grid-template-columns:repeat(2,minmax(0,1fr))}.grade-chart{gap:5px;padding:17px 10px 13px}.grade-chart-count,.grade-chart-band{font-size:9px}.grade-chart-col small{font-size:9px}.grade-chart-bar-wrap{height:130px}}
+@media(max-width:480px){.home-page h1{font-size:41px}.home-search button{width:100%}.catalog-controls{grid-template-columns:1fr 1fr}.catalog-results{grid-template-columns:1fr}.grade-chart{overflow-x:auto;grid-template-columns:repeat(11,40px);gap:5px}.dedicated-course-page .course-item{padding:14px}.section-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.course-middle.extended{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Keep secondary evidence accessible without turning a course report into a long dashboard. */
+.detail-collapse{margin:14px 0;border:1px solid #e3eee9;background:#fff;border-radius:10px;padding:14px 16px}
+.detail-collapse>summary{cursor:pointer;color:#2d6653;font-size:12px;font-weight:740}
+.detail-collapse[open]>summary{margin-bottom:15px}
+.detail-collapse .history-chart{margin-top:12px}
+/* Keep the main search input prominent, rather than letting the CTA consume the row. */
+@media(min-width:761px){.home-search input{flex:1 1 0!important;min-width:240px;width:auto}.home-search button{flex:0 0 auto!important;width:auto!important;padding-left:28px;padding-right:28px}}

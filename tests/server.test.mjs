@@ -63,3 +63,32 @@ test('catalog rejects invalid filters and oversized queries', async () => {
   assert.ok([400,404].includes(r.status));
   if(r.status===400) assert.match((await r.json()).error,/Invalid catalog/);
 });
+
+test('catalog uses nine-item pages and supports year level + type-ahead subject prefix', async () => {
+  const response = await fetch(`${root}/api/catalog?campus=UBCV&subjectPrefix=CP&level=200&page=1`);
+  if (response.status === 404) return; // Source-only mode has no catalog.
+  assert.equal(response.status, 200);
+  const data = await response.json();
+  assert.equal(data.perPage, 9);
+  assert.ok(data.results.length <= 9);
+  assert.ok(data.results.length > 0);
+  assert.ok(data.results.every(x => x.subject.startsWith('CP') && Number(x.course.slice(0, 3)) >= 200 && Number(x.course.slice(0,3)) < 300));
+  assert.ok(data.subjects.includes('CPEN'));
+});
+
+test('catalog rejects invalid level or subject prefix filters', async () => {
+  const invalid = await fetch(`${root}/api/catalog?campus=UBCV&subjectPrefix=CP1&level=900`);
+  assert.ok([400,404].includes(invalid.status));
+  if (invalid.status === 400) assert.match((await invalid.json()).error, /Invalid catalog/);
+});
+
+test('primary sections have distinct direct URLs served by the application', async () => {
+  for (const page of ['/my-classes', '/explore', '/gpa', '/data', '/course?campus=UBCV&subject=CPSC&course=110']) {
+    const response = await fetch(`${root}${page}`);
+    assert.equal(response.status, 200, page);
+    const html = await response.text();
+    assert.match(html, /data-page="home"/);
+    assert.match(html, /data-page="course"/);
+    assert.match(html, /id="homeForm"/);
+  }
+});
