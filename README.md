@@ -4,6 +4,10 @@
 
 Website source: [Otamot77/coursewise-ubc](https://github.com/Otamot77/coursewise-ubc). **Not affiliated with UBC.** Inspired by the MIT-licensed [UBCGrades](https://ubcgrades.com). The underlying grade records originally came from UBC and were preserved in [DonneyF/ubc-pair-grade-data](https://github.com/DonneyF/ubc-pair-grade-data). The MIT license covers **Coursewise code only**, not the upstream data archive.
 
+## v1.1.2 — instructor difference display preference
+
+Instructor average gaps now display with a **% sign** (for example, `+2.3%`) in the educator roster, selected-educator preview, and full history report. This is a **display-only** change from v1.1.1's `pp` label: the underlying same-term arithmetic and section weighting have not changed. The figure is the **numeric difference between two average grades expressed as percentages**, not a relative percent increase or decrease (e.g. 78.3% versus 76.0% displays `+2.3%`). The interface explains this distinction next to the historical evidence. The browser and rendering regression tests enforce consistent formatting across all three locations.
+
 ## v1.1.1 — regression repair and deeper verification
 
 This patch keeps the v1.1 visual redesign while restoring **the explicit ± instructor section average versus all recorded sections from the *same academic terms***. The table again shows the instructor's student count and now exposes the matching reference mean and number of reference sections. Differences are shown as **percentage points (pp)** rather than the previously misleading percent sign. The same comparison is visible in the selected educator chart and their full section report.

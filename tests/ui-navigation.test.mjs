@@ -107,7 +107,7 @@ test('instructor section averages and featured grade distribution lead the cours
   assert.match(html,/vs 80\.3%/);
   assert.match(html,/Graded sections/);
   assert.match(html,/Students\*/);
-  assert.match(html,/0\.0 pp/);
+  assert.match(html,/0\.0%/);
   assert.match(html,/history-hover-tooltip/);
   assert.match(html,/section-stats-visible/);
   assert.match(html,/Highest and lowest course-term averages/);

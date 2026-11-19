@@ -5,6 +5,7 @@ real processed grade index. Does not mock any chart, stats, or DOM render code.
 """
 import json
 from pathlib import Path
+import re
 from playwright.sync_api import sync_playwright
 from browser_smoke import mount
 
@@ -24,9 +25,9 @@ def run():
         page.locator('.instructor-roster-table tbody tr').first.wait_for(timeout=15000)
         assert '± VS SAME-TERM SECTIONS' in page.locator('.instructor-roster-table thead').inner_text()
         assert 'STUDENTS*' in page.locator('.instructor-roster-table thead').inner_text()
-        assert ' pp' in page.locator('.instructor-roster-table tbody tr').first.locator('td').nth(2).inner_text()
+        assert re.fullmatch(r'[+−-]?\d+\.\d%', page.locator('.instructor-roster-table tbody tr').first.locator('td').nth(2).locator('strong').inner_text().strip())
         assert 'Course mean' in page.locator('.instructor-feature-metrics').inner_text()
-        assert ' pp' in page.locator('.instructor-feature-metrics').inner_text()
+        assert re.fullmatch(r'[+−-]?\d+\.\d%', page.locator('.instructor-feature-metrics').locator('strong').nth(1).inner_text().strip())
         first_name=page.locator('#instructor-featured h4').inner_text()
         focus=page.locator('[data-instructor-focus]')
         alternative=focus.last.get_attribute('data-instructor-name')
@@ -34,7 +35,7 @@ def run():
         focus.last.click()
         assert page.locator('#instructor-featured h4').inner_text()==alternative
         assert page.locator('#instructor-featured .instructor-dist-svg').count()==1
-        print('INSTRUCTOR: visible matched-term ± in pp, comparison baseline, student counts; focus updates real histogram')
+        print('INSTRUCTOR: visible matched-term ± in %, comparison baseline, student counts; focus updates real histogram')
 
         page.locator('[data-instructor-sort]').select_option('mean')
         top=float(page.locator('.instructor-roster-table tbody tr').first.locator('td').nth(1).locator('strong').inner_text().replace('%',''))
@@ -69,7 +70,7 @@ def run():
         report=page.locator('#instructor-report')
         report.wait_for(timeout=15000)
         assert report.locator('.instructor-report-metrics').get_by_text('± vs same-term sections').count()==1
-        assert 'pp' in report.locator('.instructor-report-metrics').inner_text()
+        assert re.fullmatch(r'[+−-]?\d+\.\d%', report.locator('.instructor-report-metrics').locator('strong').nth(1).inner_text().strip())
         all_rows=report.locator('.instructor-report-table tbody tr').count()
         opts=page.locator('[data-instructor-report-term] option')
         if opts.count()>1:

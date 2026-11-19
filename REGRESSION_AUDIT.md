@@ -1,3 +1,5 @@
+**v1.1.2 display note:** The v1.1.1 audit below documents the original `pp` formatting decision. On user request v1.1.2 displays the **same unchanged arithmetic grade difference** with a `%` sign, such as `+2.3%`, in all three instructor views. This is a shorthand for the difference between two grade percentages, **not** a relative percent change. The weighting and reference-period fixes remain in effect.
+
 # Coursewise v1.1.1 regression audit
 
 This is a repair of v1.1.0. The visual redesign and the local historical grade database are retained. No private Workday spreadsheet or student grades are included in the release.
