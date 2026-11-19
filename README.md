@@ -4,6 +4,16 @@
 
 Website source: [Otamot77/coursewise-ubc](https://github.com/Otamot77/coursewise-ubc). **Not affiliated with UBC.** Inspired by the MIT-licensed [UBCGrades](https://ubcgrades.com). The underlying grade records originally came from UBC and were preserved in [DonneyF/ubc-pair-grade-data](https://github.com/DonneyF/ubc-pair-grade-data). The MIT license covers **Coursewise code only**, not the upstream data archive.
 
+## v1.1.1 — regression repair and deeper verification
+
+This patch keeps the v1.1 visual redesign while restoring **the explicit ± instructor section average versus all recorded sections from the *same academic terms***. The table again shows the instructor's student count and now exposes the matching reference mean and number of reference sections. Differences are shown as **percentage points (pp)** rather than the previously misleading percent sign. The same comparison is visible in the selected educator chart and their full section report.
+
+The matched-term calculation has also been corrected for **missing section sizes**: instructor and reference averages use student-count weighting only when *every compared graded section* has a published positive size; otherwise *both* averages use equal section weights. Comparing a student-weighted instructor mean with an unweighted course mean is prohibited. Reference sections **include the instructor's own sections**, so this is a descriptive comparison rather than a causal estimate of how an instructor grades. The comparison may reflect only retained records if historical sections were truncated in the source archive; individual grade-band distributions still exclude sections with withheld bins.
+
+Fixed a separate UX regression where successfully importing the first schedule hid the confirmation message along with the automatically dismissed setup form. Coursewise now shows the outcome in the visible workspace. Expanded the real-browser regression suite to exercise instructor sorting, academic-period filters, search, selected histograms, two-instructor comparison, full-report term filters, course distribution and Passport selection, Workday paste, manual course comparison, Grade Goal synchronization, completed-course standing, saved lineups, GPA/data pages, and narrow mobile widths. JavaScript tests now explicitly cover missing-size weighting and matched-term comparison, and real archived course profiles were checked for consistent comparison methods.
+
+**Upgrade:** Download `coursewise-ubc-v1.1.1-with-data.zip`, extract it to a **new folder**, stop any previous server with `Ctrl+C`, then run `npm start` or `npm run lan` from inside the extracted `coursewise-ubc` directory. Saved courses, completed grades, and lineups use the same browser-local storage keys as v1.1.0. On your local desktop, `Ctrl+F5` helps bypass cached CSS/JS after switching versions. This is a code and UI patch: the existing grade archive is unchanged.
+
 ## Changes in v1.1.0 — focused redesign and instructor-first analysis
 
 The site is reorganized around **the decisions UBC students actually make**: look up a course, inspect its historical grade distribution, see what happened in specific instructors' recorded sections, and then evaluate a saved course lineup. The visual redesign uses a compact sticky navigation bar, a narrower introductory homepage, more readable statistics, consistent spacing, and a dense, comparison-friendly Browse list. The course report puts **Instructor grades & distributions** directly after the summary and gives the recorded-section distribution a featured, selectable chart. The course-level histogram and target-grade Passport remain interconnected, with sample sizes, data completeness and academic-session provenance preserved.
@@ -39,10 +49,10 @@ My Classes' import/upload controls become available through a compact **Import W
 
 ### Ready-to-run ZIP on Windows
 
-If you have **`coursewise-ubc-v1.1.0-with-data.zip`**, extract it to your Downloads folder, then run:
+If you have **`coursewise-ubc-v1.1.1-with-data.zip`**, extract it to your Downloads folder, then run:
 
 ```powershell
-cd "$HOME\Downloads\coursewise-ubc-v1.1.0-with-data\coursewise-ubc"
+cd "$HOME\Downloads\coursewise-ubc-v1.1.1-with-data\coursewise-ubc"
 npm start
 ```
 

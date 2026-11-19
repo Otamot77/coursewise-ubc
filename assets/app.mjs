@@ -80,7 +80,14 @@ function activateLineup(id) {
   save();render();refreshAll();
 }
 function save() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(courses)); } catch { /* Storage disabled by browser */ } savePlanner(); }
-function message(text, isError = false) { $('importMessage').textContent = text; $('importMessage').classList.toggle('error', isError); }
+function message(text, isError = false) {
+  $('importMessage').textContent = text;
+  $('importMessage').classList.toggle('error', isError);
+  // When importing the first schedule, My Classes hides the setup form as
+  // soon as courses arrive. Keep the success/error feedback visible.
+  const feedback=$('workspaceFeedback');
+  if(feedback){feedback.textContent=$('importCard').hidden?text:'';feedback.classList.toggle('error',isError);}
+}
 
 function addCourses(incoming) {
   const seen = new Map(courses.map(c => [courseKey(c), c]));
@@ -158,6 +165,10 @@ function render() {
 }
 
 const fmtCount = n => n == null ? '—' : n.toLocaleString();
+// A difference of means is measured in percentage POINTS, not a percent
+// change; avoid rendering misleading "+0.0" or "-0.0" after rounding.
+const fmtDelta = n => !Number.isFinite(n) ? '—'
+  : `${Math.abs(n)<0.05?'0.0':`${n>0?'+':''}${n.toFixed(1)}`} pp`;
 const fmtGpa = percent => {
   const equivalent = gpaEquivalency(percent);
   if (!equivalent || equivalent.gpa === null) return '—';
@@ -330,7 +341,7 @@ function renderInstructorSectionReport(profile, key, state) {
   return `<section class="instructor-full-report" id="instructor-report" aria-labelledby="instructor-report-heading">
     <div class="instructor-report-header"><div><span class="section-index">INSTRUCTOR SECTION REPORT</span><h4 id="instructor-report-heading">${escapeHTML(report.name)}</h4><a class="instructor-rmp-link" href="https://www.ratemyprofessors.com/search/professors/${key.startsWith('UBCO:')?'5436':'1413'}?q=${encodeURIComponent(report.name)}" target="_blank" rel="noopener noreferrer">Find on Rate My Professors ↗</a><p>Published sections attributed to this educator. Sections shared with other named educators may appear in more than one person's report.</p></div><button class="outline-btn" type="button" data-instructor-close="${escapeHTML(key)}">Close report</button></div>
     <div class="instructor-report-toolbar"><label>Academic session <select data-instructor-report-term="${escapeHTML(key)}"><option value="all" ${state.reportTerm==='all'?'selected':''}>All retained sessions</option>${termOptions}</select></label><span>${report.sections} attributed section${report.sections===1?'':'s'}${report.shared?` · ${report.shared} shared`:''}</span></div>
-    <div class="instructor-report-metrics"><div><span>Section mean</span><strong>${fmtPercent(report.mean)}</strong><small>${escapeHTML(report.method)}</small></div><div><span>Graded sections</span><strong>${report.graded} / ${report.sections}</strong></div><div><span>${report.partialSizes?'Known student count ≥':'Reported / enrolled total'}</span><strong>${fmtCount(report.sizeTotal)}</strong></div><div><span>Section mean range</span><strong>${fmtPercent(report.low)}–${fmtPercent(report.high)}</strong></div></div>
+    <div class="instructor-report-metrics"><div><span>Instructor section mean</span><strong>${fmtPercent(report.mean)}</strong><small>${escapeHTML(report.method)}</small></div><div><span>± vs same-term sections</span><strong>${fmtDelta(report.difference)}</strong><small>Course mean ${fmtPercent(report.referenceAverage)} · ${report.referenceSections} sections</small></div><div><span>Graded sections</span><strong>${report.graded} / ${report.sections}</strong></div><div><span>${report.partialSizes?'Known student count ≥':'Reported / enrolled total'}</span><strong>${fmtCount(report.sizeTotal)}</strong></div><div><span>Section mean range</span><strong>${fmtPercent(report.low)}–${fmtPercent(report.high)}</strong></div></div>
     <div class="instructor-report-timeline"><h5>Recorded section averages over time</h5><p>Instructor-attributed sections (green) versus the published whole-course mean in matching terms (purple). Co-taught sections may be shared; this is not an instructor-effect estimate.</p>${instructorTimelineSvg(report.history,profile.history)}</div>
     <div class="instructor-report-distribution"><h5>Grade distribution across these sections</h5>${dist}<p class="detail-copy">${partial?'Some bins are withheld or unavailable: displayed counts may be lower bounds.':'All published grade-range bins are available for these sections.'} This combines recorded grade counts only, not individual student records. ${report.totalFromArchive > report.sections ? 'Filter excludes some of this educator’s retained sections. ' : ''}</p></div>
     <div class="instructor-report-table-heading"><h5>Section-by-section results</h5><span>Median and quartiles belong to individual sections only</span></div>
@@ -364,10 +375,10 @@ function renderInstructorComparison(profile, key) {
   const shown = state.showAll || state.query ? filtered : filtered.slice(0,10);
   const termOpts = terms.map(term=>`<option value="${escapeHTML(term)}" ${state.period===term?'selected':''}>${escapeHTML(term)}</option>`).join('');
   const periodText = state.period==='recent' ? 'Most recent five academic years represented in retained sections' : state.period==='all' ? 'All retained sections' : state.period;
-  const table = shown.length ? `<div class="instructor-scroll"><table class="instructor-table"><thead><tr><th>Recorded educator</th><th>Section mean</th><th>vs course*</th><th>Graded sections</th><th>Last term</th><th>Actions</th></tr></thead><tbody>${shown.map(group=>{
+  const table = shown.length ? `<div class="instructor-scroll"><table class="instructor-table instructor-roster-table"><thead><tr><th>Recorded educator</th><th>Section mean</th><th title="Difference in percentage points from all recorded course sections in the educator's matching academic terms">± vs same-term sections</th><th>Graded sections</th><th>Students*</th><th>Last term</th><th>Actions</th></tr></thead><tbody>${shown.map(group=>{
     const selected = state.picks.includes(group.name);
-    const delta = group.difference==null ? '—' : `${group.difference>0?'+':''}${group.difference.toFixed(1)}%`;
-    return `<tr class="${state.reportName===group.name?'instructor-report-active':''}"><td><strong>${escapeHTML(group.name)}</strong>${group.shared?`<small>${group.shared} shared section${group.shared===1?'':'s'}</small>`:''}</td><td><strong>${fmtPercent(group.average)}</strong><small>${group.method.startsWith('student')?'student-weighted':'section-weighted equally'}</small></td><td class="${group.difference!=null && group.difference>=0?'delta-positive':'delta-negative'}" title="Difference versus all recorded sections in the same academic terms">${delta}</td><td>${group.graded} / ${group.sections}${group.graded<2?'<small>Limited sample</small>':''}</td><td>${escapeHTML(group.latest||'—')}</td><td><div class="instructor-row-actions"><button type="button" class="instructor-focus-action" data-instructor-focus="${escapeHTML(key)}" data-instructor-name="${escapeHTML(group.name)}" aria-pressed="${state.featureName===group.name}">${state.featureName===group.name?'Selected':'View grades'}</button><button class="instructor-report-link" type="button" data-instructor-report="${escapeHTML(key)}" data-instructor-name="${escapeHTML(group.name)}">Full history →</button><label class="instructor-pick-label"><input type="checkbox" data-instructor-pick="${escapeHTML(key)}" value="${escapeHTML(group.name)}" aria-label="Compare ${escapeHTML(group.name)}" ${selected?'checked':''} ${!selected && state.picks.length>=2?'disabled title="Maximum two instructors"':''}/> Compare</label></div></td></tr>`;
+    const delta = fmtDelta(group.difference);
+    return `<tr class="${state.reportName===group.name?'instructor-report-active':''}"><td><strong>${escapeHTML(group.name)}</strong>${group.shared?`<small>${group.shared} shared section${group.shared===1?'':'s'}</small>`:''}</td><td><strong>${fmtPercent(group.average)}</strong><small>${group.method.startsWith('student')?'student-weighted':'section-weighted equally'}</small></td><td class="${group.difference!=null && group.difference>=0?'delta-positive':'delta-negative'}" title="Percentage-point difference from all recorded sections in matching academic terms, including this educator's own sections"><strong>${delta}</strong><small>vs ${fmtPercent(group.referenceAverage)} · ${group.referenceSections} sections</small></td><td>${group.graded} / ${group.sections}${group.graded<2?'<small>Limited sample</small>':''}</td><td>${group.students==null?'—':`${group.partialStudents?'≥ ':''}${fmtCount(group.students)}`}</td><td>${escapeHTML(group.latest||'—')}</td><td><div class="instructor-row-actions"><button type="button" class="instructor-focus-action" data-instructor-focus="${escapeHTML(key)}" data-instructor-name="${escapeHTML(group.name)}" aria-pressed="${state.featureName===group.name}">${state.featureName===group.name?'Selected':'View grades'}</button><button class="instructor-report-link" type="button" data-instructor-report="${escapeHTML(key)}" data-instructor-name="${escapeHTML(group.name)}">Full history →</button><label class="instructor-pick-label"><input type="checkbox" data-instructor-pick="${escapeHTML(key)}" value="${escapeHTML(group.name)}" aria-label="Compare ${escapeHTML(group.name)}" ${selected?'checked':''} ${!selected && state.picks.length>=2?'disabled title="Maximum two instructors"':''}/> Compare</label></div></td></tr>`;
   }).join('')}</tbody></table></div>` : '<p class="notice-text">No recorded educator names match that search in this academic period.</p>';
   const featured=all.find(g=>g.name===state.featureName);
   const featuredChart=featured?.distribution.percentages
@@ -375,9 +386,9 @@ function renderInstructorComparison(profile, key) {
     : '<p class="notice-text">No complete grade-band counts for these sections. The section means can still be viewed below.</p>';
   const featureMarkup=featured?`<div class="instructor-feature" id="instructor-featured">
     <div class="instructor-feature-head"><div><span class="section-index">SELECTED EDUCATOR · ACTUAL GRADE DISTRIBUTION</span><h4>${escapeHTML(featured.name)}</h4><span>${featured.graded} graded section${featured.graded===1?'':'s'} · latest ${escapeHTML(featured.latest||'—')}</span></div><button class="instructor-report-link" type="button" data-instructor-report="${escapeHTML(key)}" data-instructor-name="${escapeHTML(featured.name)}">Full section history →</button></div>
-    <div class="instructor-feature-metrics"><div><small>Section mean</small><strong>${fmtPercent(featured.average)}</strong></div><div><small>vs course in same terms</small><strong>${featured.difference==null?'—':`${featured.difference>0?'+':''}${featured.difference.toFixed(1)} pp`}</strong></div><div><small>Grade outcomes in complete sections</small><strong>${fmtCount(featured.distribution.total)}</strong></div></div>
+    <div class="instructor-feature-metrics"><div><small>Section mean</small><strong>${fmtPercent(featured.average)}</strong></div><div><small>± vs same-term sections</small><strong>${fmtDelta(featured.difference)}</strong><small>Course mean ${fmtPercent(featured.referenceAverage)} · ${featured.referenceSections} sections</small></div><div><small>Grade outcomes in complete sections</small><strong>${fmtCount(featured.distribution.total)}</strong></div></div>
     ${featuredChart}
-    <p class="instructor-evidence">Distribution uses ${featured.distribution.sections} of ${featured.sections} attributed sections with all eleven grade bands available. ${featured.shared?`${featured.shared} sections have multiple educator names. `:''}Comparisons are descriptive, not causal.</p>
+    <p class="instructor-evidence">Distribution uses ${featured.distribution.sections} of ${featured.sections} attributed sections with all eleven grade bands available. ${featured.shared?`${featured.shared} sections have multiple educator names. `:''}The reference includes all retained sections in matching academic terms, including this educator's own sections. Section means and references use the same weighting method; a higher difference does not establish grading leniency or a teaching effect. Some terms may be incompletely retained.</p>
   </div>`:'';
   const report = renderInstructorSectionReport(profile,key,state);
   const maxBar = Math.max(1,...active.flatMap(g=>g.distribution.percentages||[]));
@@ -396,7 +407,7 @@ function renderInstructorComparison(profile, key) {
     ${!state.query && filtered.length>10?`<button class="instructor-more" data-instructor-more="${escapeHTML(key)}">${state.showAll?'Show fewer':'Show all '+filtered.length+' educators'}</button>`:''}
     ${report}
     <section class="instructor-compare-optional" aria-label="Optional instructor comparison"><div class="instructor-compare-optional-header"><div><h4>Compare two instructors</h4><p>Optional: compare normalized grade distributions side by side for the selected period.</p></div><button class="outline-btn" type="button" data-instructor-toggle-compare="${escapeHTML(key)}">${state.showCompare?'Hide comparison':'Compare selected ('+active.length+'/2)'}</button></div>${state.showCompare?`<div class="instructor-charts-title"><span>${active.length} of 2 selected · percentages, not raw counts</span></div>${comparisons}`:''}</section>
-    <p class="instructor-disclaimer">* Students is the sum of reported/enrolled section counts, not unique students across repeated terms. Section mean weights by section size only when all sizes are available. Grade distributions include only sections with all eleven published bins. Instructor attribution is historical, sometimes includes TAs, and does not establish teaching quality or causation. ${results.truncated?'The archive retains only the 120 newest section records for very large courses.':''}</p>
+    <p class="instructor-disclaimer">* Student counts are sums of reported/enrolled section counts, not unique students across repeated terms. The ± column is the difference in percentage points against retained course sections from the SAME academic terms (including the educator's sections), not against a different-period all-time average. Both means are student-weighted only when every compared section has a known size; otherwise both are equally section-weighted. Grade distributions include only sections with all eleven published bins. Instructor attribution is historical, sometimes includes TAs, and does not establish teaching quality or causation. ${results.truncated?'The archive retains only the 120 newest section records for very large courses.':''}</p>
   </section>`;
 }
 
@@ -653,7 +664,7 @@ $('undoSwapButton').addEventListener('click',()=>{
   selected.clear();save();render();refreshAll();
 });
 
-$('importToggle').addEventListener('click',()=>{importOpen=!importOpen;render();if(importOpen)$('scheduleInput').focus();});
+$('importToggle').addEventListener('click',()=>{importOpen=!importOpen;render();if(importOpen){$('workspaceFeedback').textContent='';$('scheduleInput').focus();}});
 $('importButton').addEventListener('click', () => {
   const parsed = parseSchedule($('scheduleInput').value, $('campusSelect').value);
   if (!parsed.length) { message('No course codes found. Try a list like “CPEN_V 221” or “MATH 100”.', true); return; }

@@ -100,3 +100,43 @@ test('instructor report with withheld grades retains section but excludes incomp
  assert.equal(r.distribution.percentages,null);
  assert.equal(r.distribution.total,0);
 });
+
+
+test('matched-term differences use percentage points, exclude unmatched academic terms, and use consistent weights', () => {
+  const p={recentSections:[
+    section('2025W','101',60,20,['Ada']),
+    section('2025W','102',80,80,['Ada']),
+    section('2025W','103',70,null,['Bert']),
+    section('2024W','101',99,100,['Bert'])
+  ]};
+  const ada=compareInstructors(p,'all').instructors.find(x=>x.name==='Ada');
+  // Bert's 2024W section is not an appropriate comparator for Ada.
+  // Because Bert's 2025W size is unknown, BOTH averages are unweighted.
+  assert.equal(ada.average,70);
+  assert.equal(ada.referenceAverage,70);
+  assert.equal(ada.difference,0);
+  assert.equal(ada.method,'unweighted section means');
+  assert.equal(ada.referenceMethod,ada.method);
+  assert.deepEqual(ada.matchedTerms,['2025W']);
+  assert.equal(ada.referenceSections,3);
+  const full=instructorReport(p,'Ada');
+  assert.equal(full.difference,0);
+  assert.equal(full.referenceAverage,70);
+  assert.equal(full.referenceSections,3);
+  const term=instructorReport(p,'Bert','2024W');
+  assert.equal(term.average,undefined);
+  assert.equal(term.mean,99);
+  assert.equal(term.referenceAverage,99);
+  assert.equal(term.referenceSections,1);
+});
+
+test('a missing published instructor mean does not invent a same-term difference',()=>{
+  const p={recentSections:[section('2025W','101',null,50,['Ada']), section('2025W','102',72,80,['Bert'])]};
+  const ada=compareInstructors(p,'all').instructors.find(x=>x.name==='Ada');
+  assert.equal(ada.difference,null);
+  assert.equal(ada.referenceAverage,null);
+  assert.deepEqual(ada.matchedTerms,[]);
+  const full=instructorReport(p,'Ada');
+  assert.equal(full.difference,null);
+  assert.equal(full.referenceAverage,null);
+});

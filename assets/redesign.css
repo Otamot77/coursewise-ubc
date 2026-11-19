@@ -89,3 +89,19 @@ button:focus-visible,a:focus-visible,summary:focus-visible,input:focus-visible,s
 }
 .inline-course-message:not(:empty){padding:9px 11px;background:#f4faf6;border:1px solid #d9e9df;border-radius:8px;color:#3a6651;display:flex;flex-wrap:wrap;align-items:center;gap:5px 8px}
 .inline-course-message strong{color:#634e27}.manual-suggestion{border:1px solid #cde5d4;background:white;color:#23694e;padding:6px 9px;border-radius:7px;min-height:35px;font-size:12px;text-align:left}.manual-suggestion:hover{background:#eaf5ee}
+
+/* Regression repair: restore the explicit matched-session difference and student
+   evidence, while keeping the educator chart visible and the roster scrollable. */
+.instructor-roster-table{min-width:930px}
+.instructor-roster-table th:nth-child(3),.instructor-roster-table td:nth-child(3){min-width:152px}
+.instructor-roster-table td:nth-child(3) strong{font-size:14px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.instructor-roster-table td:nth-child(3) small{font-size:11px;white-space:normal;max-width:172px;line-height:1.35}
+.instructor-feature-metrics>div:nth-child(2) small{line-height:1.3}
+.instructor-report-metrics{grid-template-columns:repeat(5,minmax(0,1fr))}
+@media(max-width:1080px){.instructor-report-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:600px){.instructor-report-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Feedback must not disappear when setup is dismissed after the first import. */
+.workspace-feedback:empty{display:none}
+.workspace-feedback:not(:empty){margin:0 0 12px;padding:10px 13px;border:1px solid #cae4d5;border-radius:9px;background:#edf8f1;font-size:13px;color:#1c6b4d}
+.workspace-feedback.error{border-color:#f1cfbd;background:#fff6ee;color:#924a31}
