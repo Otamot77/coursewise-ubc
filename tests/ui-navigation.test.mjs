@@ -93,15 +93,17 @@ test('My Classes restores saved courses and stats after navigating back from ful
   assert.equal(state.get('courseCount').textContent,1);
 });
 
-test('instructor list prioritizes full section reports; comparison is secondary and two-way',async()=>{
+test('instructor section averages and featured grade distribution lead the course report',async()=>{
   const state=await mount('/course','?campus=UBCV&subject=ACAM&course=300');
   const html=state.get('courseView').innerHTML;
-  assert.match(html,/Instructor section histories/);
-  assert.match(html,/View full report →/);
+  assert.match(html,/Instructor grades & distributions/);
+  assert.match(html,/Full section history →/);
   assert.match(html,/data-instructor-name="Prof Example"/);
   assert.match(html,/Compare selected \(0\/2\)/);
-  assert.doesNotMatch(html,/instructor-dist-svg/); // Optional comparison starts closed.
-  assert.match(html,/vs same-term/);
+  assert.match(html,/id="instructor-featured"/);
+  assert.match(html,/instructor-dist-svg/); // The selected educator's actual grade chart is visible by default.
+  assert.ok(html.indexOf('id="instructor-comparison"')<html.indexOf('id="course-distribution"'));
+  assert.match(html,/vs course in same terms/);
   assert.match(html,/history-hover-tooltip/);
   assert.match(html,/section-stats-visible/);
   assert.match(html,/Highest and lowest course-term averages/);
@@ -144,14 +146,15 @@ test('clicking View full report opens educator section data; closing restores in
   assert.match(report,/Section-by-section results/);
   onClick({target:targetFor('[data-instructor-close]',{dataset:{instructorClose:'UBCV:ACAM:300'}})});
   const restored=state.get('courseView').innerHTML;
-  assert.match(restored,/Instructor section histories/);
+  assert.match(restored,/Instructor grades & distributions/);
   assert.doesNotMatch(restored,/id="instructor-report"/);
 });
 
 test('optional comparison is initially closed, can be opened, and documents two maximum',async()=>{
   const state=await mount('/course','?campus=UBCV&subject=ACAM&course=300');
   const onClick=state.get('courseView').listeners.get('click');
-  assert.doesNotMatch(state.get('courseView').innerHTML,/class="instructor-dist-svg"/);
+  assert.match(state.get('courseView').innerHTML,/class="instructor-dist-svg"/);
+  assert.doesNotMatch(state.get('courseView').innerHTML,/class="instructor-compare-grid"/);
   onClick({target:{closest:selector=>selector==='[data-instructor-toggle-compare]'?{dataset:{instructorToggleCompare:'UBCV:ACAM:300'}}:null}});
   assert.match(state.get('courseView').innerHTML,/Tick one or two instructors/);
   assert.match(state.get('courseView').innerHTML,/Hide comparison/);
@@ -161,17 +164,22 @@ test('optional comparison is initially closed, can be opened, and documents two 
   assert.match(src,/Maximum two instructors/);
   assert.doesNotMatch(src,/Maximum three instructors/);
 });
-test('sticky navigation, Grade Goals shortcut and credit explanation are present on all pages',async()=>{
+test('redesign navigation, density stylesheet and completed-course panel are present',async()=>{
   const {readFileSync}=await import('node:fs');
   const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
-  const css=readFileSync(new URL('../assets/styles.css',import.meta.url),'utf8');
-  assert.match(html,/Know your courses/);
-  assert.match(html,/compare instructors, import your Workday schedule/i);
-  assert.match(html,/id="plannerJump" href="#gradePlanner"/);
-  assert.match(html,/1\.5-credit courses/);
-  assert.match(css,/\.site-header\{position:sticky;top:0;z-index:90/);
-  assert.match(css,/\.desktop-nav a\{height:44px;flex:0 0 auto!important;display:flex!important/);
-  assert.match(css,/\.history-point:hover \.history-hover-tooltip/);
+  const css=readFileSync(new URL('../assets/redesign.css',import.meta.url),'utf8');
+  assert.match(html,/Explore UBC grades/);
+  assert.match(html,/instructor section grades/i);
+  assert.match(html,/data-nav="classes"/);
+  assert.match(html,/class="nav-more"/);
+  assert.match(html,/id="completedStanding"/);
+  assert.match(html,/id="completedBody"/);
+  assert.match(html,/id="importToggle"/);
+  assert.match(html,/id="plannerRows"/);
+  assert.match(css,/\.site-header\{height:62px;position:sticky/);
+  assert.match(css,/\.workspace-dashboard\{display:grid/);
+  assert.match(css,/\.instructor-feature\{/);
+  assert.match(css,/\.completed-standing\{/);
 });
 
 test('comparison table shows median/quartiles/high-low and recalculates the percentile threshold',async()=>{

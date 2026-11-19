@@ -4,13 +4,23 @@
 
 Website source: [Otamot77/coursewise-ubc](https://github.com/Otamot77/coursewise-ubc). **Not affiliated with UBC.** Inspired by the MIT-licensed [UBCGrades](https://ubcgrades.com). The underlying grade records originally came from UBC and were preserved in [DonneyF/ubc-pair-grade-data](https://github.com/DonneyF/ubc-pair-grade-data). The MIT license covers **Coursewise code only**, not the upstream data archive.
 
+## Changes in v1.1.0 — focused redesign and instructor-first analysis
+
+The site is reorganized around **the decisions UBC students actually make**: look up a course, inspect its historical grade distribution, see what happened in specific instructors' recorded sections, and then evaluate a saved course lineup. The visual redesign uses a compact sticky navigation bar, a narrower introductory homepage, more readable statistics, consistent spacing, and a dense, comparison-friendly Browse list. The course report puts **Instructor grades & distributions** directly after the summary and gives the recorded-section distribution a featured, selectable chart. The course-level histogram and target-grade Passport remain interconnected, with sample sizes, data completeness and academic-session provenance preserved.
+
+**My Classes** now centers on the user's saved lineup instead of leaving a large Workday import sidebar open after import. Course rows have editable **credit values**, **planned/final grades**, and an explicit **Completed** checkbox. The same values power Grade Goals, persisted saved-lineup options, swaps and an always-visible **How Goated Are You?** summary. It includes **only courses marked completed with a final grade**; unfinished courses and hypothetical grade targets are excluded. Missing or privacy-suppressed complete grade distributions are excluded with an explanation. The visible headline is a **credit-weighted average of individual course historical standings**, **not a percentile among all UBC students**, not a student-by-student class rank, and not an estimate of how peers' semester averages are distributed. No personality badges or messages are shown.
+
+My Classes' import/upload controls become available through a compact **Import Workday schedule** action after courses exist, but remain visible for first-time setup. Existing Workday `.xlsx` parsing, local storage, saved lineups, Grade Goal Planner, comparison, swap preview/undo, course reports and Rate My Professors search links are retained. The detailed planner remains available under **Advanced grade planning** for users who want course sliders; the primary course-grade inputs no longer need to be entered twice. Manual course addition now validates against the exact historical catalog, rejecting codes like `FFFF222` *without adding fake courses*, and offering clickable alternatives where a match exists.
+
+**Version migration:** The same browser-local course/grade keys remain in use. No data upload or account is required. As before, each device has separate local storage. Wi-Fi access continues through `npm run lan`, with `npm start` local-only. The underlying historical archive remains outside the source-only repository.
+
 ## Changes in v1.0.1 — valid course search and local Wi-Fi access
 
 **Search stays on the homepage when a code is not found.** A valid-looking string such as `FFFF222` must first match an exact campus/course entry in the imported historical catalog. A miss shows an inline **Course not found** message and, when available, clickable **Did you mean…?** suggestions based on near course codes or course titles. The lookup never fabricates a course report. Deep links to missing courses show a not-found message instead of an empty report. A code archived only at the other UBC campus may be suggested with its campus clearly labeled.
 
 **Wi-Fi hosting is opt-in.** Use `npm run lan` instead of `npm start` to listen on all local interfaces and print this computer's LAN URL. Other devices on the **same Wi-Fi/private network** can open it in their browser. `npm start` remains restricted to the local computer. No accounts, external hosting, or port forwarding are needed. Each device's saved courses and lineups are **independent** because they use browser-local storage.
 
-## What's in v1.0.0
+## Core data and tools (introduced in v1.0.0)
 
 | Area | What you can do |
 |---|---|
@@ -29,10 +39,10 @@ Website source: [Otamot77/coursewise-ubc](https://github.com/Otamot77/coursewise
 
 ### Ready-to-run ZIP on Windows
 
-If you have **`coursewise-ubc-v1.0.1-with-data.zip`**, extract it to your Downloads folder, then run:
+If you have **`coursewise-ubc-v1.1.0-with-data.zip`**, extract it to your Downloads folder, then run:
 
 ```powershell
-cd "$HOME\Downloads\coursewise-ubc-v1.0.1-with-data\coursewise-ubc"
+cd "$HOME\Downloads\coursewise-ubc-v1.1.0-with-data\coursewise-ubc"
 npm start
 ```
 

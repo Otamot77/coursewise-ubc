@@ -10,10 +10,10 @@ import base64, gzip, json, re
 from playwright.sync_api import sync_playwright
 ROOT=Path(__file__).resolve().parents[1]
 index=json.loads(gzip.decompress((ROOT/'data/course-index.json.gz').read_bytes()))
-CSS=(ROOT/'assets/styles.css').read_text()
+CSS=(ROOT/'assets/styles.css').read_text()+'\n'+(ROOT/'assets/redesign.css').read_text()
 HTML=(ROOT/'index.html').read_text()
 HTML=re.sub(r'<script\b[^>]*src="/assets/app.mjs"[^>]*></script>', '', HTML)
-HTML=re.sub(r'<link\b[^>]*href="/assets/styles.css"[^>]*>', '', HTML)
+HTML=re.sub(r'<link\b[^>]*href="/assets/(styles|redesign).css"[^>]*>', '', HTML)
 
 @lru_cache(maxsize=None)
 def module_data(path):
@@ -55,7 +55,7 @@ def mount(browser, page_name,initial_storage=None, query=''):
         if(u.pathname==='/api/course-search'){
           const q=(u.searchParams.get('q')||'').trim().toUpperCase();
           const campus=u.searchParams.get('campus')||'UBCV';
-          const exact=Object.keys(fixture).find(key=>key===`${campus}:${q.replace(/\s+/,':')}`);
+          const exact=Object.keys(fixture).find(key=>key===`${campus}:${q.replace(/\\s+/,':')}`);
           const row=exact?(()=>{const [campus,subject,course]=exact.split(':');return {campus,subject,course,title:fixture[exact].stats?.course_title||''};})():null;
           const suggestions=q==='FFFF222'||q==='FFFF 222'?[]:[{campus:'UBCV',subject:'MATH',course:'100',title:'Differential Calculus'}];
           return new Response(JSON.stringify({found:!!row,course:row,suggestions:row?[]:suggestions}),{status:200,headers:{'content-type':'application/json'}});
@@ -111,6 +111,20 @@ def main():
         assert not errors,errors
         print('DIRECT URL: invalid course shows a proper not-found state without a fabricated report')
         page.close()
+        # Adding manually must verify exact catalog membership, not just a code pattern.
+        page,errors=mount(browser,'classes')
+        page.locator('#manualCode').fill('FFFF222')
+        page.locator('#addButton').click()
+        page.locator('#inlineCourseMessage').get_by_text('not found',exact=False).wait_for(timeout=15000)
+        assert page.locator('.lineup-course').count()==0, 'Unlisted course was inserted into My Classes'
+        page.locator('#manualCode').fill('MTAH 100')
+        page.locator('#addButton').click()
+        page.locator('.manual-suggestion').first.wait_for(timeout=15000)
+        page.locator('.manual-suggestion').first.click()
+        assert page.locator('.lineup-course').count()==1
+        assert not errors,errors
+        print('MANUAL ADD: rejects non-existent codes inline; suggestions can be added')
+        page.close()
         page,errors=mount(browser,'classes',storage)
         page.locator('.lineup-course').first.wait_for(timeout=15000)
         page.locator('.lineup-course').filter(has_text='CPEN 211').locator('.lineup-highlight-primary strong').wait_for(timeout=15000)
@@ -133,18 +147,28 @@ def main():
         assert page.locator('.lineup-course').filter(has_text='MATH 253').count()==0
         print('SWAP APPLY/UNDO: restored original courses')
         # Grade Goal settings must follow the correct lineup, not leak across options.
+        page.locator('.planner-advanced summary').click()
         page.locator('[data-planner-credits="UBCV:CPEN:211"]').fill('4')
         page.locator('[data-planner-credits="UBCV:CPEN:211"]').dispatch_event('change')
         page.locator('[data-planner-number="UBCV:CPEN:211"]').fill('77')
         page.locator('[data-planner-number="UBCV:CPEN:211"]').dispatch_event('change')
+        page.locator('.lineup-more summary').click()
         page.locator('#duplicateLineup').click()
         assert page.locator('#lineupSelect option').count()==2
         page.locator('#clearButton').click()
         assert page.locator('.lineup-course').count()==0
         page.locator('#lineupSelect').select_option('main')
         assert page.locator('.lineup-course').count()==2
-        assert page.locator('[data-planner-credits="UBCV:CPEN:211"]').input_value()=='4'
-        assert page.locator('[data-planner-number="UBCV:CPEN:211"]').input_value()=='77'
+        assert page.locator('[data-inline-credits="UBCV:CPEN:211"]').input_value()=='4'
+        assert page.locator('[data-inline-grade="UBCV:CPEN:211"]').input_value()=='77'
+        # Unified grade controls: completed means actual final grade, not a target.
+        page.locator('[data-inline-complete="UBCV:CPEN:211"]').check()
+        page.locator('#completedBody .completed-total').wait_for(timeout=15000)
+        assert 'Top ' in page.locator('#completedBody').inner_text()
+        assert '1 of 1' in page.locator('#completedBody').inner_text()
+        page.locator('[data-inline-complete="UBCV:CPEN:211"]').uncheck()
+        assert '0 completed' in page.locator('#completedCount').inner_text()
+        print('COMPLETED STANDING: inline final grade drives summary; unchecked courses excluded')
         print('LINEUPS: duplicate, clear copy, restore original credit and grade settings')
         saved=snapshot(page)
         assert not errors,errors
@@ -167,12 +191,18 @@ def main():
         assert '80%' in page.locator('.distribution-target-guide').get_attribute('aria-label')
         print('PASSPORT: slider updates standing and synchronized SVG target line')
         assert not errors,errors
-        page.screenshot(path='/mnt/data/coursewise-v1-passport-browser.png',full_page=True)
+        page.screenshot(path=str(ROOT.parent/'coursewise-redesign-passport-browser.png'),full_page=True)
         passport_storage=snapshot(page)
         page.close()
         page,errors=mount(browser,'course',passport_storage,'?campus=UBCV&subject=MATH&course=100')
         page.locator('[data-passport-target]').wait_for(timeout=15000)
         assert page.locator('[data-passport-target]').input_value()=='80', 'Target slider did not persist across course pages'
+        page.locator('#instructor-featured').wait_for(timeout=15000)
+        assert page.locator('#instructor-featured .instructor-dist-svg').count()==1
+        assert page.locator('[data-instructor-focus]').count()>0
+        page.locator('[data-instructor-focus]').last.click()
+        assert page.locator('#instructor-featured').count()==1
+        print('INSTRUCTOR PREVIEW: real distribution visible by default; selected chart changes inline')
         page.locator('[data-instructor-report]').first.wait_for(timeout=15000)
         page.locator('[data-instructor-report]').first.click()
         page.locator('.instructor-full-report').wait_for(timeout=15000)
@@ -182,7 +212,7 @@ def main():
         assert page.locator('.instructor-full-report').locator('th',has_text='Grade spread').count()==0
         print('INSTRUCTORS: full report timeline and university-scoped RMP link')
         assert not errors,errors
-        page.screenshot(path='/mnt/data/coursewise-v1-instructor-browser.png',full_page=True)
+        page.screenshot(path=str(ROOT.parent/'coursewise-redesign-instructor-browser.png'),full_page=True)
         for width in [375,768,1440]:
             page.set_viewport_size({'width':width,'height':812})
             assert page.evaluate('document.documentElement.scrollWidth <= document.documentElement.clientWidth'), f'Course report overflow at {width}px'

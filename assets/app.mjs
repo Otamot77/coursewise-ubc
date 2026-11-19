@@ -7,6 +7,7 @@ import { courseComparison } from '../lib/comparison.mjs';
 import { coursePassport, selectTermSections, historicalConsistency } from '../lib/passport.mjs';
 import { readLineups, makeLineup, swapCourse, historicSemesterBaseline, MAX_LINEUPS } from '../lib/lineups.mjs';
 import { gradeDistributionSvg, historyTrendSvg, compactTrendSvg, instructorDistributionSvg, instructorTimelineSvg } from '../lib/charts.mjs';
+import { completedCourseStanding } from '../lib/completed.mjs';
 
 const $ = id => document.getElementById(id);
 const UBC_GPA_SOURCE = 'https://www.arts.ubc.ca/degree-planning/academic-performance/promotion-continuation-grading/';
@@ -46,6 +47,7 @@ let loading = new Set();
 let selected = new Set();
 let expanded = new Set();
 let exampleMode = false;
+let importOpen = false;
 
 try { courses = normalizeSavedCourses(JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')); } catch { courses = []; }
 let lineupsState;
@@ -130,8 +132,12 @@ function render() {
   $('duplicateLineup').disabled=lineups.length>=MAX_LINEUPS;
   $('newLineup').disabled=lineups.length>=MAX_LINEUPS;
   $('deleteLineup').disabled=lineups.length===1;
+  const importer=$('importCard');
+  if(importer)importer.hidden=courses.length>0&&!importOpen;
+  const importButton=$('importToggle');
+  if(importButton){importButton.hidden=courses.length===0;importButton.textContent=importer?.hidden?'＋ Import Workday schedule':'Close import';importButton.setAttribute('aria-expanded',String(!importer?.hidden));}
   $('courseCount').textContent = courses.length;
-  $('plannerJump').hidden = courses.length === 0;
+  // Grade Goals remains visible alongside the course list; no jump link needed.
   $('courseEmpty').hidden = courses.length > 0;
   $('insightPanel').hidden = courses.length === 0;
   const count = courses.filter(c => profiles.get(courseKey(c))?.average != null).length;
@@ -148,7 +154,7 @@ function render() {
   $('compareStrip').hidden = selected.size === 0;
   $('compareText').textContent = `${selected.size} selected for comparison (max 4)`;
   if (!$('comparePanel').hidden) renderComparison();
-  if (page === 'classes') renderPlanner();
+  if (page === 'classes') {renderPlanner();renderCompleted();}
 }
 
 const fmtCount = n => n == null ? '—' : n.toLocaleString();
@@ -338,7 +344,7 @@ function renderInstructorComparison(profile, key) {
   const terms = availableInstructorTerms(profile);
   if (!terms.length) return `<section class="instructor-panel" id="instructor-comparison"><div class="instructor-head"><h3>Instructor section histories</h3><p>No section-level educator names are available from this course's data source. Teaching-team listings alone cannot support section-grade comparisons.</p></div></section>`;
   const linked = page === 'course' ? new URLSearchParams(location.search).get('instructor') : null;
-  const state = instructorSelections.get(key) || { period:'recent', sort:'sections', query:'', picks:[], showAll:false, showCompare:false, reportName:linked?.slice(0,120) || null, reportTerm:'all' };
+  const state = instructorSelections.get(key) || { period:'recent', sort:'sections', query:'', picks:[], showAll:false, showCompare:false, reportName:linked?.slice(0,120) || null, reportTerm:'all', featureName:null };
   if (!(state.period === 'all' || state.period === 'recent' || terms.includes(state.period))) state.period='recent';
   const results = compareInstructors(profile, state.period);
   const all = results.instructors;
@@ -347,6 +353,8 @@ function renderInstructorComparison(profile, key) {
   const savedReport = state.reportName && instructorReport(profile,state.reportName,'all');
   if (savedReport) state.reportName=savedReport.name;
   else {state.reportName=null;state.reportTerm='all';}
+  if(!all.some(group=>group.name===state.featureName))
+    state.featureName=all.find(group=>group.distribution.percentages && group.graded)?.name || all[0]?.name || null;
   instructorSelections.set(key,state);
   const active = state.picks.map(name => all.find(x => x.name === name)).filter(Boolean);
   let filtered = all.filter(x => x.name.toLocaleLowerCase('en-CA').includes(state.query.toLocaleLowerCase('en-CA')));
@@ -356,11 +364,21 @@ function renderInstructorComparison(profile, key) {
   const shown = state.showAll || state.query ? filtered : filtered.slice(0,10);
   const termOpts = terms.map(term=>`<option value="${escapeHTML(term)}" ${state.period===term?'selected':''}>${escapeHTML(term)}</option>`).join('');
   const periodText = state.period==='recent' ? 'Most recent five academic years represented in retained sections' : state.period==='all' ? 'All retained sections' : state.period;
-  const table = shown.length ? `<div class="instructor-scroll"><table class="instructor-table"><thead><tr><th>Recorded educator</th><th>Graded sections</th><th>Section mean</th><th title="Percentage-point difference versus all course sections from the same academic terms">vs same-term<br/>sections</th><th>Latest</th><th>Students*</th><th>Section history</th><th>Compare</th></tr></thead><tbody>${shown.map(group=>{
+  const table = shown.length ? `<div class="instructor-scroll"><table class="instructor-table"><thead><tr><th>Recorded educator</th><th>Section mean</th><th>vs course*</th><th>Graded sections</th><th>Last term</th><th>Actions</th></tr></thead><tbody>${shown.map(group=>{
     const selected = state.picks.includes(group.name);
     const delta = group.difference==null ? '—' : `${group.difference>0?'+':''}${group.difference.toFixed(1)}%`;
-    return `<tr class="${state.reportName===group.name?'instructor-report-active':''}"><td><strong>${escapeHTML(group.name)}</strong>${group.shared?`<small>${group.shared} shared section${group.shared===1?'':'s'}</small>`:''}</td><td>${group.graded} / ${group.sections}${group.graded<2?'<small>Limited sample</small>':''}</td><td><strong>${fmtPercent(group.average)}</strong><small>${group.method.startsWith('student')?'weighted':'unweighted'}</small></td><td class="${group.difference!=null && group.difference>=0?'delta-positive':'delta-negative'}" title="Percentage-point difference versus the course in matching academic terms">${delta}</td><td>${escapeHTML(group.latest||'—')}</td><td>${group.students==null?'—':`${group.partialStudents?'≥ ':''}${fmtCount(group.students)}`}</td><td><button class="instructor-report-link" type="button" data-instructor-report="${escapeHTML(key)}" data-instructor-name="${escapeHTML(group.name)}">View full report →</button></td><td><input type="checkbox" data-instructor-pick="${escapeHTML(key)}" value="${escapeHTML(group.name)}" aria-label="Compare ${escapeHTML(group.name)}" ${selected?'checked':''} ${!selected && state.picks.length>=2?'disabled title="Maximum two instructors"':''}/></td></tr>`;
+    return `<tr class="${state.reportName===group.name?'instructor-report-active':''}"><td><strong>${escapeHTML(group.name)}</strong>${group.shared?`<small>${group.shared} shared section${group.shared===1?'':'s'}</small>`:''}</td><td><strong>${fmtPercent(group.average)}</strong><small>${group.method.startsWith('student')?'student-weighted':'section-weighted equally'}</small></td><td class="${group.difference!=null && group.difference>=0?'delta-positive':'delta-negative'}" title="Difference versus all recorded sections in the same academic terms">${delta}</td><td>${group.graded} / ${group.sections}${group.graded<2?'<small>Limited sample</small>':''}</td><td>${escapeHTML(group.latest||'—')}</td><td><div class="instructor-row-actions"><button type="button" class="instructor-focus-action" data-instructor-focus="${escapeHTML(key)}" data-instructor-name="${escapeHTML(group.name)}" aria-pressed="${state.featureName===group.name}">${state.featureName===group.name?'Selected':'View grades'}</button><button class="instructor-report-link" type="button" data-instructor-report="${escapeHTML(key)}" data-instructor-name="${escapeHTML(group.name)}">Full history →</button><label class="instructor-pick-label"><input type="checkbox" data-instructor-pick="${escapeHTML(key)}" value="${escapeHTML(group.name)}" aria-label="Compare ${escapeHTML(group.name)}" ${selected?'checked':''} ${!selected && state.picks.length>=2?'disabled title="Maximum two instructors"':''}/> Compare</label></div></td></tr>`;
   }).join('')}</tbody></table></div>` : '<p class="notice-text">No recorded educator names match that search in this academic period.</p>';
+  const featured=all.find(g=>g.name===state.featureName);
+  const featuredChart=featured?.distribution.percentages
+    ? instructorDistributionSvg(featured.distribution.percentages,featured.distribution.counts,{title:`${featured.name}, published grade outcomes across complete attributed sections`})
+    : '<p class="notice-text">No complete grade-band counts for these sections. The section means can still be viewed below.</p>';
+  const featureMarkup=featured?`<div class="instructor-feature" id="instructor-featured">
+    <div class="instructor-feature-head"><div><span class="section-index">SELECTED EDUCATOR · ACTUAL GRADE DISTRIBUTION</span><h4>${escapeHTML(featured.name)}</h4><span>${featured.graded} graded section${featured.graded===1?'':'s'} · latest ${escapeHTML(featured.latest||'—')}</span></div><button class="instructor-report-link" type="button" data-instructor-report="${escapeHTML(key)}" data-instructor-name="${escapeHTML(featured.name)}">Full section history →</button></div>
+    <div class="instructor-feature-metrics"><div><small>Section mean</small><strong>${fmtPercent(featured.average)}</strong></div><div><small>vs course in same terms</small><strong>${featured.difference==null?'—':`${featured.difference>0?'+':''}${featured.difference.toFixed(1)} pp`}</strong></div><div><small>Grade outcomes in complete sections</small><strong>${fmtCount(featured.distribution.total)}</strong></div></div>
+    ${featuredChart}
+    <p class="instructor-evidence">Distribution uses ${featured.distribution.sections} of ${featured.sections} attributed sections with all eleven grade bands available. ${featured.shared?`${featured.shared} sections have multiple educator names. `:''}Comparisons are descriptive, not causal.</p>
+  </div>`:'';
   const report = renderInstructorSectionReport(profile,key,state);
   const maxBar = Math.max(1,...active.flatMap(g=>g.distribution.percentages||[]));
   const comparisons = active.length ? `<div class="instructor-compare-grid">${active.map(group=>{
@@ -370,9 +388,10 @@ function renderInstructorComparison(profile, key) {
     }) : '<div class="instructor-no-bars">No complete published section-grade distributions for this educator in this period.</div>';
     return `<article class="instructor-compare-card"><div class="instructor-compare-top"><strong>${escapeHTML(group.name)}</strong><span>${group.graded} graded section${group.graded===1?'':'s'}</span></div><div class="instructor-compare-metrics"><div><small>Section mean</small><b>${fmtPercent(group.average)}</b></div><div><small>Mean range</small><b>${fmtPercent(group.low)}–${fmtPercent(group.high)}</b></div></div>${chart}<p class="detail-copy">${dist.percentages?`${fmtCount(dist.total)} published grade outcomes across ${dist.sections} complete section${dist.sections===1?'':'s'}`:'No fully published sections'}; ${group.sections-dist.sections} section${group.sections-dist.sections===1?'':'s'} omitted for unavailable bins. ${group.shared?'Some sections are shared with other recorded educators.':''}</p></article>`;
   }).join('')}</div>` : '<p class="notice-text">Tick one or two instructors above to compare grade distributions.</p>';
-  return `<section class="instructor-panel" id="instructor-comparison" aria-labelledby="instructor-title"><div class="instructor-head"><div><span class="section-index">INSTRUCTOR INSIGHTS</span><h3 id="instructor-title">Instructor section histories</h3><p><strong>${results.instructors.length}</strong> recorded educator names in ${results.sections} retained section records (${results.unassigned} without names). Open any instructor's full section report; comparisons are optional.</p></div><span class="soft-pill">HISTORICAL RECORDS</span></div>
+  return `<section class="instructor-panel" id="instructor-comparison" aria-labelledby="instructor-title"><div class="instructor-head"><div><span class="section-index">INSTRUCTOR INSIGHTS</span><h3 id="instructor-title">Instructor grades & distributions</h3><p>Explore actual recorded section averages and distributions for ${results.instructors.length} named educator${results.instructors.length===1?'':'s'}. Select someone below to update the chart.</p></div><span class="soft-pill">HISTORICAL RECORDS</span></div>
     <div class="instructor-controls"><label>Academic period<select data-instructor-period="${escapeHTML(key)}"><option value="recent" ${state.period==='recent'?'selected':''}>Recent five years</option><option value="all" ${state.period==='all'?'selected':''}>All retained years</option>${termOpts}</select></label><label>Search educators<input type="search" data-instructor-query="${escapeHTML(key)}" placeholder="Type a name…" value="${escapeHTML(state.query)}"/></label><label>Sort educators<select data-instructor-sort="${escapeHTML(key)}"><option value="sections" ${state.sort==='sections'?'selected':''}>Most graded sections</option><option value="mean" ${state.sort==='mean'?'selected':''}>Highest section mean</option><option value="latest" ${state.sort==='latest'?'selected':''}>Most recent section</option><option value="name" ${state.sort==='name'?'selected':''}>Name A–Z</option></select></label></div>
     <p class="instructor-caption">${escapeHTML(periodText)} · View full reports for individual section results. Some sections are attributed to multiple named educators and should not be considered independent observations.</p>
+    ${featureMarkup}
     ${table}
     ${!state.query && filtered.length>10?`<button class="instructor-more" data-instructor-more="${escapeHTML(key)}">${state.showAll?'Show fewer':'Show all '+filtered.length+' educators'}</button>`:''}
     ${report}
@@ -394,22 +413,25 @@ function renderCourse(c, standalone = false) {
   const { latest: last, recorded }=latestTermSummary(profile);
 
   if (!standalone) {
-    const recentSections=profile?.recentSections ?? [];
-    const lastSections=last ? recentSections.filter(r=>r.yearsession===last.yearsession && r.section!=='OVERALL') : [];
-    const availableSections=lastSections.length ? lastSections : last ? recentSections.filter(r=>r.yearsession===last.yearsession) : [];
-    const dist=availableSections.length ? aggregateDistributions(availableSections) : null;
-    const mostCommon=(dist?.fullyPublished && dist.publishedCount>0)
-      ? dist.bins.reduce((best,bin)=>!best||bin.value>best.value?bin:best,null) : null;
+    const options=plannerEntry(key);
+    const grade=options.fixedGrade==null?'':String(options.fixedGrade);
+    const latest=profile?.history?.at(-1);
     return `<article class="lineup-course" data-key="${escapeHTML(key)}">
-      <div class="lineup-heading"><div class="course-logo">${escapeHTML(c.subject)}</div><div class="course-title-block"><strong>${escapeHTML(courseLabel(c))}</strong><small>${escapeHTML(profile?.title||'Historical course overview')}${section}</small></div><button class="remove-course" data-remove="${escapeHTML(key)}" type="button" aria-label="Remove ${escapeHTML(courseLabel(c))}">✕</button></div>
-      <div class="lineup-highlights">
-        <div class="lineup-highlight-primary"><span>Recent 5-year mean</span><strong>${pending?'···':fmtPercent(profile?.average5)}</strong></div>
-        <div><span>Latest term${last?` · ${escapeHTML(last.yearsession)}`:''}</span><strong>${fmtPercent(last?.average)}</strong></div>
-        <div><span>All-time mean</span><strong>${fmtPercent(profile?.average)}</strong></div>
-        <div class="lineup-graph"><span>Historical trend</span>${compactTrendSvg(profile?.history)}<small>${escapeHTML(profile?.history?.length||0)} published terms</small></div>
+      <div class="lineup-heading"><div class="course-logo">${escapeHTML(c.subject)}</div>
+        <div class="course-title-block"><strong><a href="${escapeHTML(courseUrl(c))}">${escapeHTML(courseLabel(c))}</a></strong><small>${escapeHTML(profile?.title||'Historical course overview')}${section}</small></div>
+        <button class="remove-course" data-remove="${escapeHTML(key)}" type="button" aria-label="Remove ${escapeHTML(courseLabel(c))}">✕</button>
       </div>
-      <div class="lineup-detail-strip"><span>${recorded?.reported != null ? `${fmtCount(recorded.reported)} reported/enrolled students in latest term` : 'Latest term class size unavailable'}</span><span>${mostCommon ? `Most common published band: ${escapeHTML(mostCommon.key)} (${fmtCount(mostCommon.value)})` : 'Grade-band summary unavailable or partly withheld'}</span></div>
-      <div class="lineup-footer"><div>${status}${coverageHint}</div><div class="lineup-actions"><label class="compare-label"><input type="checkbox" data-select="${escapeHTML(key)}" ${selected.has(key)?'checked':''} aria-label="Compare ${escapeHTML(courseLabel(c))}"/> Compare</label><button class="lineup-swap-button" data-swap-start="${escapeHTML(key)}" type="button">Try swapping ↔</button><a class="detail-toggle" href="${escapeHTML(courseUrl(c))}">Full report →</a></div></div>
+      <div class="lineup-highlights"><div class="lineup-highlight-primary"><span>Recent mean</span><strong>${pending?'···':fmtPercent(profile?.average5)}</strong></div>
+        <div><span>Latest ${escapeHTML(latest?.yearsession||'term')}</span><strong>${fmtPercent(latest?.average)}</strong></div>
+        <div class="lineup-graph"><span>Average trend</span>${compactTrendSvg(profile?.history)}</div>
+      </div>
+      <div class="lineup-grade-fields" aria-label="Grade settings for ${escapeHTML(courseLabel(c))}">
+        <label>Credits<input data-inline-credits="${escapeHTML(key)}" aria-label="Credits for ${escapeHTML(courseLabel(c))}" type="number" min="0.5" max="18" step="0.5" value="${options.credits}"/></label>
+        <label>Planned / final grade %<input data-inline-grade="${escapeHTML(key)}" aria-label="Grade percentage for ${escapeHTML(courseLabel(c))}" type="number" min="0" max="100" step="0.1" placeholder="Set grade" value="${grade}"/></label>
+        <label class="lineup-done"><input data-inline-complete="${escapeHTML(key)}" type="checkbox" ${options.completed?'checked':''}/> Completed</label>
+        ${options.fixedGrade!=null?`<button type="button" class="lineup-reset" data-inline-reset="${escapeHTML(key)}">Reset to auto</button>`:''}
+      </div>
+      <div class="lineup-footer"><span class="lineup-status">${status}${coverageHint}</span><div class="lineup-actions"><label class="compare-label"><input type="checkbox" data-select="${escapeHTML(key)}" ${selected.has(key)?'checked':''}/> Compare</label><button class="lineup-swap-button" data-swap-start="${escapeHTML(key)}" type="button">Try swapping ↔</button><a class="detail-toggle" href="${escapeHTML(courseUrl(c))}">Course report →</a></div></div>
     </article>`;
   }
 
@@ -420,9 +442,9 @@ function renderCourse(c, standalone = false) {
   const partial=profile?.coverage?.partialYearsessions??0;
   const warnings=partial ? `<div class="data-warning">${partial} recorded term${partial===1?'':'s'} contain unpublished section averages; term means use only available entries.</div>` : '';
   const details=`<div class="course-detail">
+    ${renderInstructorComparison(profile,key)}
     ${renderDistribution(profile,key)}
     <section class="historical-stat-summary" id="more-historical-stats" aria-label="Historical course-average extremes"><div class="section-stats-title"><h4>Highest and lowest course-term averages</h4><span>Across published academic sessions</span></div><div class="secondary-stat-grid"><div><span>Highest course-term mean</span><strong>${fmtPercent(profile?.high)}</strong></div><div><span>Lowest course-term mean</span><strong>${fmtPercent(profile?.low)}</strong></div></div></section>
-    ${renderInstructorComparison(profile,key)}
     ${warnings}${related}
     <details class="detail-collapse"><summary>Historical sections (up to 20 shown)</summary>${sectionTable}<p class="detail-copy">Historical section identifiers and teaching assignments may differ today.</p></details>
     <details class="detail-collapse"><summary>Recorded teaching team</summary><div class="educator-list">${teaching}</div></details>
@@ -432,7 +454,7 @@ function renderCourse(c, standalone = false) {
     <div class="course-head"><div class="course-logo">${escapeHTML(c.subject)}</div><div class="course-title-block"><strong>${escapeHTML(courseLabel(c))}</strong><small>${escapeHTML(profile?.title||'Historical course overview')}${section}</small></div><button class="outline-btn add-explored" type="button" data-add-explored="${escapeHTML(key)}">Save to My Classes +</button></div>
     <div class="course-data-availability">${status}${coverageHint}</div>
     ${renderCourseOverview(profile)}
-    ${profile?.recentSections?.length ? '<nav class="course-quicklinks" aria-label="Course report sections"><a href="#course-distribution">Grade distribution ↓</a><a href="#instructor-comparison">Instructor section reports ↓</a></nav>' : ''}
+    ${profile?.recentSections?.length ? '<nav class="course-quicklinks" aria-label="Course report sections"><a href="#instructor-comparison">Instructor grade distributions ↓</a><a href="#course-distribution">Course grade distribution ↓</a></nav>' : ''}
     ${details}
   </article>`;
 }
@@ -631,6 +653,7 @@ $('undoSwapButton').addEventListener('click',()=>{
   selected.clear();save();render();refreshAll();
 });
 
+$('importToggle').addEventListener('click',()=>{importOpen=!importOpen;render();if(importOpen)$('scheduleInput').focus();});
 $('importButton').addEventListener('click', () => {
   const parsed = parseSchedule($('scheduleInput').value, $('campusSelect').value);
   if (!parsed.length) { message('No course codes found. Try a list like “CPEN_V 221” or “MATH 100”.', true); return; }
@@ -667,11 +690,44 @@ $('scheduleFile').addEventListener('change', async e => {
     message(error?.message || 'Could not read this Excel export. Please try again or paste the courses.', true);
   }
 });
-$('manualForm').addEventListener('submit', e => {
+let manualSearchRequest=0;
+$('manualForm').addEventListener('submit',async e=>{
   e.preventDefault();
-  const parsed = parseSchedule($('manualCode').value, $('campusSelect').value);
-  if (!parsed.length) { message('Enter a course code such as CPEN 221.', true); return; }
-  addCourses(parsed); $('manualCode').value = ''; message('Course added.');
+  const out=$('inlineCourseMessage'), button=$('addButton');
+  const raw=$('manualCode').value.trim();
+  // A manually entered compact code (e.g. CPEN221A) should use the same
+  // exact-catalog validation as a code entered with a space.
+  const compact=raw.match(/^([A-Za-z]{2,6})\s*([0-9]{3}[A-Za-z]?)$/);
+  const parsed=parseSchedule(compact?`${compact[1]} ${compact[2]}`:raw,$('campusSelect').value);
+  const request=++manualSearchRequest;
+  if(!parsed.length){out.textContent='Enter a course code such as CPEN 221A.';return;}
+  if(parsed.length>8){out.textContent='Add up to eight course codes at a time, or import your Workday schedule.';return;}
+  button.disabled=true;out.textContent='Checking the historical catalog…';
+  const accepted=[], rejected=[];
+  try{
+    for(const course of parsed){
+      const response=await fetch(`/api/course-search?${new URLSearchParams({campus:course.campus,q:`${course.subject} ${course.course}`})}`);
+      if(!response.ok)throw Error('The course catalog is unavailable. Use Workday import or try again later.');
+      const result=await response.json();
+      if(request!==manualSearchRequest)return;
+      if(result.found && result.course && courseKey(result.course)===courseKey(course)) accepted.push(course);
+      else rejected.push({course,suggestions:result.suggestions||[]});
+    }
+    if(accepted.length){addCourses(accepted);$('manualCode').value='';}
+    if(rejected.length){
+      out.innerHTML=`<strong>${rejected.map(x=>escapeHTML(courseLabel(x.course))).join(', ')}: not found in the local historical catalog.</strong><span> Check the code or choose a match:</span>${rejected.flatMap(item=>item.suggestions.slice(0,3)).slice(0,6).map(c=>`<button type="button" class="manual-suggestion" data-manual-suggestion="${escapeHTML(`${c.campus}:${c.subject}:${c.course}`)}">${escapeHTML(c.subject)} ${escapeHTML(c.course)} · ${escapeHTML(c.title||'Course title unavailable')}</button>`).join('')}`;
+    } else out.textContent=`${accepted.length} course${accepted.length===1?'':'s'} added.`;
+  }catch(err){if(request===manualSearchRequest)out.textContent=err.message||'Could not verify this course right now.';}
+  finally{if(request===manualSearchRequest)button.disabled=false;}
+});
+$('inlineCourseMessage').addEventListener('click',e=>{
+  const raw=e.target.closest('[data-manual-suggestion]')?.dataset.manualSuggestion;
+  if(!raw)return;
+  const [campus,subject,course]=raw.split(':');
+  if(validApiPath(campus,subject,course)){
+    addCourses([{campus,subject,course,sections:[]}]);
+    $('manualCode').value='';$('inlineCourseMessage').textContent=`${subject} ${course} added.`;
+  }
 });
 $('clearButton').addEventListener('click', () => {
   courses = []; selected.clear(); expanded.clear(); errors.clear(); swapDraft=null;undoSwap=null; exampleMode = false; save(); render(); message('Local lineup cleared.');
@@ -689,6 +745,31 @@ $('courseCards').addEventListener('click', e => {
   if (related) { addCourses(parseSchedule(related, $('campusSelect').value)); message(`${related} added from related historical codes.`); return; }
   const expand = e.target.closest('[data-expand]')?.dataset.expand;
   if (expand) { expanded.has(expand) ? expanded.delete(expand) : expanded.add(expand); render(); }
+});
+$('courseCards').addEventListener('change',e=>{
+  const input=e.target;
+  const key=input.dataset.inlineCredits || input.dataset.inlineGrade || input.dataset.inlineComplete;
+  if(!key)return;
+  const current=plannerEntry(key);
+  if(input.dataset.inlineCredits){const credits=Number(input.value);if(validCredits(credits))updatePlanner(key,{credits});else render();return;}
+  if(input.dataset.inlineGrade){
+    if(!input.value.trim()){updatePlanner(key,{fixedGrade:null,completed:false});return;}
+    const grade=Number(input.value);
+    if(validGrade(grade))updatePlanner(key,{fixedGrade:grade});else render();
+    return;
+  }
+  if(input.dataset.inlineComplete){
+    if(input.checked&&current.fixedGrade==null){
+      input.checked=false;
+      $('inlineCourseMessage').textContent='Enter the final grade for this course before marking it completed.';
+      return;
+    }
+    updatePlanner(key,{completed:input.checked});$('inlineCourseMessage').textContent='';
+  }
+});
+$('courseCards').addEventListener('click',e=>{
+  const key=e.target.closest('[data-inline-reset]')?.dataset.inlineReset;
+  if(key)updatePlanner(key,{fixedGrade:null,completed:false});
 });
 $('courseCards').addEventListener('change', e => {
   const key = e.target.dataset.select;
@@ -851,6 +932,13 @@ $('courseView').addEventListener('change',e=>{
   if(e.target.dataset.instructorPeriod || e.target.dataset.instructorSort || e.target.dataset.instructorPick || e.target.dataset.instructorReportTerm)updateInstructorPanel(e);
 });
 $('courseView').addEventListener('click',e=>{
+  const focus=e.target.closest('[data-instructor-focus]');
+  if(focus && detailedCourse && focus.dataset.instructorFocus===courseKey(detailedCourse)){
+    const key=focus.dataset.instructorFocus;
+    const state=instructorSelections.get(key);
+    if(state){state.featureName=focus.dataset.instructorName;const current=$('courseView').querySelector('#instructor-comparison');if(current)current.outerHTML=renderInstructorComparison(profiles.get(key),key);$('courseView').querySelector('#instructor-featured')?.scrollIntoView({behavior:'smooth',block:'nearest'});}
+    return;
+  }
   const openReport = e.target.closest('[data-instructor-report]');
   if (openReport && detailedCourse && openReport.dataset.instructorReport===courseKey(detailedCourse)) {
     const key=openReport.dataset.instructorReport;
@@ -921,6 +1009,23 @@ for(const id of ['homeCode','homeCampus'])$(id).addEventListener(id==='homeCode'
   $('homeMessage').innerHTML='';
   $('homeMessage').classList.remove('error');
 });
+let homeSuggestDelay=null;
+$('homeCode').addEventListener('input',()=>{
+  clearTimeout(homeSuggestDelay);
+  const raw=$('homeCode').value.trim();
+  if(raw.length<3)return;
+  const request=homeSearchRequest;
+  homeSuggestDelay=setTimeout(async()=>{
+    try{
+      const url=`/api/course-search?${new URLSearchParams({campus:$('homeCampus').value,q:raw})}`;
+      const result=await (await fetch(url)).json();
+      if(request!==homeSearchRequest || document.activeElement!==$('homeCode') || !result.suggestions?.length)return;
+      const status=$('homeMessage');
+      status.classList.remove('error');
+      status.innerHTML=`<span class="course-suggestion-heading">Matching courses</span>${courseSuggestionLinks(result.found&&result.course?[result.course,...result.suggestions].slice(0,4):result.suggestions.slice(0,4))}`;
+    }catch{/* suggestions are best effort; submit remains authoritative */}
+  },220);
+});
 $('homeForm').addEventListener('submit', async event => {
   event.preventDefault();
   const raw=$('homeCode').value.trim();
@@ -963,7 +1068,7 @@ function plannerEntry(key) {
 }
 function updatePlanner(key, patch) {
   plannerSettings.entries[key] = { ...plannerEntry(key), ...patch };
-  savePlanner(); renderPlanner();
+  savePlanner(); render();
 }
 function planModels() {
   return courses.map(c => {
@@ -1090,6 +1195,27 @@ $('plannerReset').addEventListener('click', () => {
   }
   savePlanner();renderPlanner();
 });
+
+function renderCompleted(){
+  const node=$('completedBody'),counter=$('completedCount');
+  if(!node||!counter)return;
+  const items=courses.map(c=>{
+    const id=courseKey(c),entry=plannerEntry(id);
+    return {id,label:courseLabel(c),credits:entry.credits,completed:entry.completed,finalGrade:entry.fixedGrade,
+      distribution:chooseDistribution(profiles.get(id))};
+  });
+  const report=completedCourseStanding(items);
+  counter.textContent=`${report.total} completed`;
+  if(!report.total){node.innerHTML='<p class="completed-empty">Mark a course completed and enter its final grade to see its historical standing here.</p>';return;}
+  const result=report.topShare==null?'—':`≈ Top ${report.topShare.toFixed(1)}%`;
+  const rows=report.rows.map(r=>{
+    const percent=r.evidence?.percentBelow;
+    return `<div class="completed-row"><div class="completed-row-name"><strong>${escapeHTML(r.label)}</strong><span>${r.grade.toFixed(1)}% · ${r.credits} credits</span></div>
+      ${r.available?`<div class="completed-bar" role="img" aria-label="${percent.toFixed(1)}th historical percentile"><span style="width:${Math.max(0,Math.min(100,percent))}%"></span></div><strong class="completed-row-standing">${r.evidence.exact?'':'≈'}Top ${(100-percent).toFixed(1)}%</strong>`:'<span class="completed-unavailable">Historical bins unavailable</span>'}
+      ${r.available?`<small class="completed-provenance">${escapeHTML(r.evidence.session)} · n=${fmtCount(r.evidence.sampleSize)} · ${r.evidence.exact?'exact band boundary':'within-band estimate'}</small>`:''}</div>`;
+  }).join('');
+  node.innerHTML=`<div class="completed-total"><span>Average historical course standing</span><strong>${result}</strong><small>${report.covered} of ${report.total} completed courses have complete historical distributions${report.status==='partial'?' · unavailable courses excluded':''}</small></div><div class="completed-list">${rows}</div>`;
+}
 
 // Initialize after module setup is complete; especially important when a
 // student returns to a saved course lineup after viewing a full report.
